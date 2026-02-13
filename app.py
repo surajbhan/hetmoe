@@ -420,7 +420,7 @@ def find_examples():
     if not os.path.isdir(examples_dir):
         return result
     for f in sorted(os.listdir(examples_dir)):
-        path = os.path.join(examples_dir, f)
+        path = os.path.abspath(os.path.join(examples_dir, f))
         if f.startswith("cifar_") and f.endswith(".png"):
             result["image"].append(path)
         elif f.startswith("speech_") and f.endswith(".wav"):
@@ -472,12 +472,6 @@ Upload an image, record audio, or draw a digit to see how the router distributes
                     with gr.Column(scale=1):
                         img_input = gr.Image(type="pil", label="Upload Image")
                         img_btn = gr.Button("Classify", variant="primary")
-                        if EXAMPLES["image"]:
-                            gr.Examples(
-                                examples=EXAMPLES["image"],
-                                inputs=img_input,
-                                label="Try these CIFAR-10 samples",
-                            )
                     with gr.Column(scale=1):
                         img_pred = gr.Label(num_top_classes=5, label="Predictions (CIFAR-10)")
                         img_chart = gr.Image(label="Expert Routing")
@@ -486,6 +480,16 @@ Upload an image, record audio, or draw a digit to see how the router distributes
                 img_btn.click(classify_image, inputs=img_input,
                              outputs=[img_pred, img_chart, img_analysis])
 
+                if EXAMPLES["image"]:
+                    gr.Examples(
+                        examples=EXAMPLES["image"],
+                        inputs=img_input,
+                        outputs=[img_pred, img_chart, img_analysis],
+                        fn=classify_image,
+                        label="Try these CIFAR-10 samples",
+                        run_on_click=True,
+                    )
+
             # ── Tab 2: Audio (Temporal + Spectral) ──
             with gr.Tab("Audio (Temporal + Spectral)"):
                 gr.Markdown("Record or upload audio. The model processes it two ways: as a raw waveform (Temporal) and as an FFT spectrum (Spectral).")
@@ -493,12 +497,6 @@ Upload an image, record audio, or draw a digit to see how the router distributes
                     with gr.Column(scale=1):
                         audio_input = gr.Audio(label="Record or Upload Audio")
                         audio_btn = gr.Button("Classify", variant="primary")
-                        if EXAMPLES["audio"]:
-                            gr.Examples(
-                                examples=EXAMPLES["audio"],
-                                inputs=audio_input,
-                                label="Try these Speech Commands samples",
-                            )
                     with gr.Column(scale=1):
                         gr.Markdown("### Temporal (Waveform)")
                         audio_pred_t = gr.Label(num_top_classes=5, label="Temporal Predictions")
@@ -514,6 +512,17 @@ Upload an image, record audio, or draw a digit to see how the router distributes
                                outputs=[audio_pred_t, audio_chart_t, audio_analysis_t,
                                        audio_pred_s, audio_chart_s, audio_analysis_s])
 
+                if EXAMPLES["audio"]:
+                    gr.Examples(
+                        examples=EXAMPLES["audio"],
+                        inputs=audio_input,
+                        outputs=[audio_pred_t, audio_chart_t, audio_analysis_t,
+                                audio_pred_s, audio_chart_s, audio_analysis_s],
+                        fn=classify_audio,
+                        label="Try these Speech Commands samples",
+                        run_on_click=True,
+                    )
+
             # ── Tab 3: Digit (Relational) ──
             with gr.Tab("Digit (Relational)"):
                 gr.Markdown("Draw a digit or upload an image. It's converted to a pairwise distance matrix and classified using MNIST labels.")
@@ -521,12 +530,6 @@ Upload an image, record audio, or draw a digit to see how the router distributes
                     with gr.Column(scale=1):
                         digit_input = gr.Image(type="pil", label="Upload or Draw a Digit")
                         digit_btn = gr.Button("Classify", variant="primary")
-                        if EXAMPLES["digit"]:
-                            gr.Examples(
-                                examples=EXAMPLES["digit"],
-                                inputs=digit_input,
-                                label="Try these MNIST samples",
-                            )
                     with gr.Column(scale=1):
                         digit_pred = gr.Label(num_top_classes=5, label="Predictions (MNIST)")
                         digit_chart = gr.Image(label="Expert Routing")
@@ -534,6 +537,16 @@ Upload an image, record audio, or draw a digit to see how the router distributes
 
                 digit_btn.click(classify_digit, inputs=digit_input,
                                outputs=[digit_pred, digit_chart, digit_analysis])
+
+                if EXAMPLES["digit"]:
+                    gr.Examples(
+                        examples=EXAMPLES["digit"],
+                        inputs=digit_input,
+                        outputs=[digit_pred, digit_chart, digit_analysis],
+                        fn=classify_digit,
+                        label="Try these MNIST samples",
+                        run_on_click=True,
+                    )
 
         gr.Markdown("""
 ---
@@ -547,4 +560,5 @@ Upload an image, record audio, or draw a digit to see how the router distributes
 
 if __name__ == "__main__":
     demo = build_app()
-    demo.launch()
+    examples_abs = os.path.abspath(os.path.join(RESULTS_DIR, "examples"))
+    demo.launch(allowed_paths=[examples_abs])
