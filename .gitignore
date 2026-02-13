@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Data caches (large downloads)
+data_cache/
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.toc
+
+# OS
+.DS_Store
+Thumbs.db

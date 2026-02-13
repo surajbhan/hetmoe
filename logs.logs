@@ -1,0 +1,639 @@
+.venv) suraj@atlas:/data/hetergenous-moe$ python hetmoe_v2.py 
+^[[A  GPU: NVIDIA GeForce GTX 1650 (4.1 GB)
+
+=================================================================
+  HETEROGENEOUS MoE v2 — RAW STRUCTURE EXPERIMENT
+  Mode: FULL
+  Epochs: 400  |  Input: 1024  |  Batch: 64
+  Device: cuda
+=================================================================
+
+=================================================================
+  EXPERIMENT 1: Core Comparison (same hidden dim)
+=================================================================
+
+  ── Homo 4×FFN ──
+  [Homo 4×FFN] ep   66/400  loss=0.0345  Spatial=0.0142 | Temporal=0.0244 | Spectral=0.0919 | Relational=0.0075
+  [Homo 4×FFN] ep  132/400  loss=0.0290  Spatial=0.0220 | Temporal=0.0112 | Spectral=0.0708 | Relational=0.0120
+  [Homo 4×FFN] ep  198/400  loss=0.0171  Spatial=0.0111 | Temporal=0.0052 | Spectral=0.0426 | Relational=0.0097
+  [Homo 4×FFN] ep  264/400  loss=0.0220  Spatial=0.0200 | Temporal=0.0021 | Spectral=0.0547 | Relational=0.0112
+  [Homo 4×FFN] ep  330/400  loss=0.0163  Spatial=0.0046 | Temporal=0.0055 | Spectral=0.0482 | Relational=0.0067
+  [Homo 4×FFN] ep  396/400  loss=0.0181  Spatial=0.0234 | Temporal=0.0053 | Spectral=0.0375 | Relational=0.0064
+
+  [Homo 4×FFN]  Overall: 0.0203  |  Params: 689,800
+    Spatial     : 0.0150
+    Temporal    : 0.0046
+    Spectral    : 0.0531
+    Relational  : 0.0084
+  Routing weights:
+                FFN_0        FFN_1        FFN_2        FFN_3        
+    Spatial     0.227        0.272        0.292        0.209        
+    Temporal    0.167        0.335        0.353        0.145        
+    Spectral    0.370        0.257        0.174        0.198        
+    Relational  0.997        0.002        0.001        0.000        
+
+  ── Hetero (Spat+Temp+Spec+Rel) ──
+  [Hetero (Spat+Temp+Spec+Rel)] ep   66/400  loss=0.0525  Spatial=0.0122 | Temporal=0.1020 | Spectral=0.0657 | Relational=0.0299
+  [Hetero (Spat+Temp+Spec+Rel)] ep  132/400  loss=0.0196  Spatial=0.0083 | Temporal=0.0264 | Spectral=0.0404 | Relational=0.0034
+  [Hetero (Spat+Temp+Spec+Rel)] ep  198/400  loss=0.0176  Spatial=0.0043 | Temporal=0.0060 | Spectral=0.0539 | Relational=0.0059
+  [Hetero (Spat+Temp+Spec+Rel)] ep  264/400  loss=0.0157  Spatial=0.0066 | Temporal=0.0179 | Spectral=0.0321 | Relational=0.0062
+  [Hetero (Spat+Temp+Spec+Rel)] ep  330/400  loss=0.0166  Spatial=0.0025 | Temporal=0.0172 | Spectral=0.0435 | Relational=0.0030
+  [Hetero (Spat+Temp+Spec+Rel)] ep  396/400  loss=0.0137  Spatial=0.0031 | Temporal=0.0089 | Spectral=0.0394 | Relational=0.0032
+
+  [Hetero (Spat+Temp+Spec+Rel)]  Overall: 0.0167  |  Params: 220,280
+    Spatial     : 0.0040
+    Temporal    : 0.0102
+    Spectral    : 0.0471
+    Relational  : 0.0056
+  Routing weights:
+                Spatial      Temporal     Spectral     Relational   
+    Spatial     0.255        0.246        0.255        0.243        
+    Temporal    0.266        0.247        0.205        0.282        
+    Spectral    0.370        0.172        0.193        0.265        
+    Relational  0.555        0.000        0.001        0.444        
+
+  ── Hybrid (FFN+Spat+Temp+Spec) ──
+  [Hybrid (FFN+Spat+Temp+Spec)] ep   66/400  loss=0.0571  Spatial=0.0105 | Temporal=0.1220 | Spectral=0.0857 | Relational=0.0100
+  [Hybrid (FFN+Spat+Temp+Spec)] ep  132/400  loss=0.0210  Spatial=0.0042 | Temporal=0.0467 | Spectral=0.0289 | Relational=0.0041
+  [Hybrid (FFN+Spat+Temp+Spec)] ep  198/400  loss=0.0174  Spatial=0.0020 | Temporal=0.0158 | Spectral=0.0468 | Relational=0.0049
+  [Hybrid (FFN+Spat+Temp+Spec)] ep  264/400  loss=0.0304  Spatial=0.0051 | Temporal=0.0064 | Spectral=0.1011 | Relational=0.0092
+  [Hybrid (FFN+Spat+Temp+Spec)] ep  330/400  loss=0.0283  Spatial=0.0066 | Temporal=0.0349 | Spectral=0.0637 | Relational=0.0080
+  [Hybrid (FFN+Spat+Temp+Spec)] ep  396/400  loss=0.0293  Spatial=0.0069 | Temporal=0.0490 | Spectral=0.0557 | Relational=0.0054
+
+  [Hybrid (FFN+Spat+Temp+Spec)]  Overall: 0.0155  |  Params: 352,280
+    Spatial     : 0.0039
+    Temporal    : 0.0078
+    Spectral    : 0.0457
+    Relational  : 0.0047
+  Routing weights:
+                FFN          Spatial      Temporal     Spectral     
+    Spatial     0.280        0.258        0.228        0.234        
+    Temporal    0.400        0.209        0.213        0.178        
+    Spectral    0.322        0.307        0.203        0.168        
+    Relational  0.178        0.819        0.003        0.000        
+
+=================================================================
+  EXPERIMENT 2: Parameter-Matched Comparisons
+=================================================================
+
+  ── Big Homo (hidden=256) ──
+  [Big Homo (h=256)] ep   66/400  loss=0.0176  Spatial=0.0095 | Temporal=0.0145 | Spectral=0.0402 | Relational=0.0061
+  [Big Homo (h=256)] ep  132/400  loss=0.0269  Spatial=0.0104 | Temporal=0.0108 | Spectral=0.0807 | Relational=0.0055
+  [Big Homo (h=256)] ep  198/400  loss=0.0224  Spatial=0.0390 | Temporal=0.0066 | Spectral=0.0377 | Relational=0.0064
+  [Big Homo (h=256)] ep  264/400  loss=0.0132  Spatial=0.0110 | Temporal=0.0201 | Spectral=0.0167 | Relational=0.0050
+  [Big Homo (h=256)] ep  330/400  loss=0.0220  Spatial=0.0169 | Temporal=0.0141 | Spectral=0.0472 | Relational=0.0097
+  [Big Homo (h=256)] ep  396/400  loss=0.0200  Spatial=0.0126 | Temporal=0.0061 | Spectral=0.0445 | Relational=0.0166
+
+  [Big Homo (h=256)]  Overall: 0.0205  |  Params: 1,313,416
+    Spatial     : 0.0125
+    Temporal    : 0.0067
+    Spectral    : 0.0531
+    Relational  : 0.0097
+  Routing weights:
+                FFN_0        FFN_1        FFN_2        FFN_3        
+    Spatial     0.233        0.286        0.230        0.252        
+    Temporal    0.205        0.349        0.262        0.184        
+    Spectral    0.365        0.355        0.097        0.183        
+    Relational  0.982        0.018        0.000        0.000        
+
+  ── Param-Matched Hetero (hidden=226) ──
+  [Hetero (h=226)] ep   66/400  loss=0.0300  Spatial=0.0124 | Temporal=0.0347 | Spectral=0.0620 | Relational=0.0107
+  [Hetero (h=226)] ep  132/400  loss=0.0167  Spatial=0.0214 | Temporal=0.0128 | Spectral=0.0252 | Relational=0.0075
+  [Hetero (h=226)] ep  198/400  loss=0.0307  Spatial=0.0078 | Temporal=0.0387 | Spectral=0.0637 | Relational=0.0126
+  [Hetero (h=226)] ep  264/400  loss=0.0124  Spatial=0.0077 | Temporal=0.0084 | Spectral=0.0300 | Relational=0.0034
+  [Hetero (h=226)] ep  330/400  loss=0.0172  Spatial=0.0034 | Temporal=0.0033 | Spectral=0.0557 | Relational=0.0063
+  [Hetero (h=226)] ep  396/400  loss=0.0203  Spatial=0.0090 | Temporal=0.0212 | Spectral=0.0449 | Relational=0.0062
+
+  [Hetero (h=226)]  Overall: 0.0169  |  Params: 401,144
+    Spatial     : 0.0078
+    Temporal    : 0.0098
+    Spectral    : 0.0463
+    Relational  : 0.0039
+  Routing weights:
+                Spatial      Temporal     Spectral     Relational   
+    Spatial     0.259        0.255        0.224        0.262        
+    Temporal    0.291        0.224        0.218        0.266        
+    Spectral    0.233        0.337        0.193        0.237        
+    Relational  0.008        0.984        0.002        0.006        
+
+  ── Param-Matched Hybrid (hidden=226) ──
+  [Hybrid (h=226)] ep   66/400  loss=0.0281  Spatial=0.0049 | Temporal=0.0168 | Spectral=0.0838 | Relational=0.0071
+  [Hybrid (h=226)] ep  132/400  loss=0.0311  Spatial=0.0045 | Temporal=0.0045 | Spectral=0.1090 | Relational=0.0066
+  [Hybrid (h=226)] ep  198/400  loss=0.0193  Spatial=0.0041 | Temporal=0.0297 | Spectral=0.0411 | Relational=0.0024
+  [Hybrid (h=226)] ep  264/400  loss=0.0119  Spatial=0.0030 | Temporal=0.0059 | Spectral=0.0343 | Relational=0.0044
+  [Hybrid (h=226)] ep  330/400  loss=0.0172  Spatial=0.0068 | Temporal=0.0052 | Spectral=0.0539 | Relational=0.0029
+  [Hybrid (h=226)] ep  396/400  loss=0.0133  Spatial=0.0025 | Temporal=0.0196 | Spectral=0.0275 | Relational=0.0036
+
+  [Hybrid (h=226)]  Overall: 0.0142  |  Params: 637,276
+    Spatial     : 0.0021
+    Temporal    : 0.0046
+    Spectral    : 0.0451
+    Relational  : 0.0050
+  Routing weights:
+                FFN          Spatial      Temporal     Spectral     
+    Spatial     0.285        0.250        0.240        0.225        
+    Temporal    0.379        0.246        0.202        0.174        
+    Spectral    0.280        0.213        0.288        0.219        
+    Relational  0.032        0.002        0.963        0.003        
+
+=================================================================
+  EXPERIMENT 3: Robustness (5 seeds)
+=================================================================
+  [homo s=42] ep   66/400  loss=0.0345  Spatial=0.0142 | Temporal=0.0244 | Spectral=0.0919 | Relational=0.0075
+  [homo s=42] ep  132/400  loss=0.0290  Spatial=0.0220 | Temporal=0.0112 | Spectral=0.0708 | Relational=0.0120
+  [homo s=42] ep  198/400  loss=0.0171  Spatial=0.0111 | Temporal=0.0052 | Spectral=0.0426 | Relational=0.0097
+  [homo s=42] ep  264/400  loss=0.0220  Spatial=0.0200 | Temporal=0.0021 | Spectral=0.0547 | Relational=0.0112
+  [homo s=42] ep  330/400  loss=0.0163  Spatial=0.0046 | Temporal=0.0055 | Spectral=0.0482 | Relational=0.0067
+  [homo s=42] ep  396/400  loss=0.0181  Spatial=0.0234 | Temporal=0.0053 | Spectral=0.0375 | Relational=0.0064
+
+  [homo s=42]  Overall: 0.0203  |  Params: 689,800
+    Spatial     : 0.0150
+    Temporal    : 0.0046
+    Spectral    : 0.0531
+    Relational  : 0.0084
+  Routing weights:
+                FFN_0        FFN_1        FFN_2        FFN_3        
+    Spatial     0.227        0.272        0.292        0.209        
+    Temporal    0.167        0.335        0.353        0.145        
+    Spectral    0.370        0.257        0.174        0.198        
+    Relational  0.997        0.002        0.001        0.000        
+  [hetero s=42] ep   66/400  loss=0.0525  Spatial=0.0122 | Temporal=0.1020 | Spectral=0.0657 | Relational=0.0299
+  [hetero s=42] ep  132/400  loss=0.0196  Spatial=0.0083 | Temporal=0.0264 | Spectral=0.0404 | Relational=0.0034
+  [hetero s=42] ep  198/400  loss=0.0175  Spatial=0.0043 | Temporal=0.0060 | Spectral=0.0539 | Relational=0.0059
+  [hetero s=42] ep  264/400  loss=0.0157  Spatial=0.0066 | Temporal=0.0179 | Spectral=0.0321 | Relational=0.0062
+  [hetero s=42] ep  330/400  loss=0.0166  Spatial=0.0025 | Temporal=0.0172 | Spectral=0.0435 | Relational=0.0030
+  [hetero s=42] ep  396/400  loss=0.0137  Spatial=0.0031 | Temporal=0.0089 | Spectral=0.0394 | Relational=0.0032
+
+  [hetero s=42]  Overall: 0.0167  |  Params: 220,280
+    Spatial     : 0.0040
+    Temporal    : 0.0102
+    Spectral    : 0.0471
+    Relational  : 0.0056
+  Routing weights:
+                Spatial      Temporal     Spectral     Relational   
+    Spatial     0.255        0.246        0.255        0.243        
+    Temporal    0.266        0.247        0.205        0.282        
+    Spectral    0.370        0.172        0.193        0.265        
+    Relational  0.555        0.000        0.001        0.444        
+  [hybrid s=42] ep   66/400  loss=0.0571  Spatial=0.0105 | Temporal=0.1220 | Spectral=0.0857 | Relational=0.0100
+  [hybrid s=42] ep  132/400  loss=0.0210  Spatial=0.0042 | Temporal=0.0467 | Spectral=0.0289 | Relational=0.0041
+  [hybrid s=42] ep  198/400  loss=0.0174  Spatial=0.0020 | Temporal=0.0158 | Spectral=0.0468 | Relational=0.0049
+  [hybrid s=42] ep  264/400  loss=0.0304  Spatial=0.0051 | Temporal=0.0064 | Spectral=0.1011 | Relational=0.0092
+  [hybrid s=42] ep  330/400  loss=0.0283  Spatial=0.0066 | Temporal=0.0349 | Spectral=0.0637 | Relational=0.0080
+  [hybrid s=42] ep  396/400  loss=0.0293  Spatial=0.0069 | Temporal=0.0490 | Spectral=0.0557 | Relational=0.0054
+
+  [hybrid s=42]  Overall: 0.0155  |  Params: 352,280
+    Spatial     : 0.0039
+    Temporal    : 0.0078
+    Spectral    : 0.0457
+    Relational  : 0.0047
+  Routing weights:
+                FFN          Spatial      Temporal     Spectral     
+    Spatial     0.280        0.258        0.228        0.234        
+    Temporal    0.400        0.209        0.213        0.178        
+    Spectral    0.322        0.307        0.203        0.168        
+    Relational  0.178        0.819        0.003        0.000        
+  Seed 42: H=0.0203  Het=0.0167  Hyb=0.0155
+  [homo s=123] ep   66/400  loss=0.0350  Spatial=0.0183 | Temporal=0.0350 | Spectral=0.0676 | Relational=0.0192
+  [homo s=123] ep  132/400  loss=0.0229  Spatial=0.0249 | Temporal=0.0120 | Spectral=0.0450 | Relational=0.0096
+  [homo s=123] ep  198/400  loss=0.0132  Spatial=0.0141 | Temporal=0.0059 | Spectral=0.0272 | Relational=0.0054
+  [homo s=123] ep  264/400  loss=0.0237  Spatial=0.0063 | Temporal=0.0050 | Spectral=0.0682 | Relational=0.0153
+  [homo s=123] ep  330/400  loss=0.0204  Spatial=0.0177 | Temporal=0.0020 | Spectral=0.0579 | Relational=0.0042
+  [homo s=123] ep  396/400  loss=0.0240  Spatial=0.0116 | Temporal=0.0251 | Spectral=0.0546 | Relational=0.0047
+
+  [homo s=123]  Overall: 0.0195  |  Params: 689,800
+    Spatial     : 0.0163
+    Temporal    : 0.0053
+    Spectral    : 0.0484
+    Relational  : 0.0082
+  Routing weights:
+                FFN_0        FFN_1        FFN_2        FFN_3        
+    Spatial     0.261        0.241        0.256        0.242        
+    Temporal    0.330        0.270        0.169        0.230        
+    Spectral    0.098        0.267        0.501        0.134        
+    Relational  0.000        0.927        0.073        0.000        
+  [hetero s=123] ep   66/400  loss=0.0490  Spatial=0.0045 | Temporal=0.0444 | Spectral=0.0796 | Relational=0.0673
+  [hetero s=123] ep  132/400  loss=0.0400  Spatial=0.0039 | Temporal=0.0392 | Spectral=0.0734 | Relational=0.0435
+  [hetero s=123] ep  198/400  loss=0.0165  Spatial=0.0049 | Temporal=0.0147 | Spectral=0.0343 | Relational=0.0123
+  [hetero s=123] ep  264/400  loss=0.0171  Spatial=0.0051 | Temporal=0.0100 | Spectral=0.0437 | Relational=0.0099
+  [hetero s=123] ep  330/400  loss=0.0110  Spatial=0.0063 | Temporal=0.0030 | Spectral=0.0293 | Relational=0.0054
+  [hetero s=123] ep  396/400  loss=0.0114  Spatial=0.0057 | Temporal=0.0052 | Spectral=0.0301 | Relational=0.0046
+
+  [hetero s=123]  Overall: 0.0168  |  Params: 220,280
+    Spatial     : 0.0060
+    Temporal    : 0.0113
+    Spectral    : 0.0426
+    Relational  : 0.0073
+  Routing weights:
+                Spatial      Temporal     Spectral     Relational   
+    Spatial     0.252        0.249        0.242        0.258        
+    Temporal    0.288        0.277        0.126        0.309        
+    Spectral    0.271        0.186        0.214        0.328        
+    Relational  0.529        0.004        0.001        0.465        
+  [hybrid s=123] ep   66/400  loss=0.0217  Spatial=0.0053 | Temporal=0.0270 | Spectral=0.0508 | Relational=0.0039
+  [hybrid s=123] ep  132/400  loss=0.0334  Spatial=0.0051 | Temporal=0.0567 | Spectral=0.0637 | Relational=0.0080
+  [hybrid s=123] ep  198/400  loss=0.0187  Spatial=0.0034 | Temporal=0.0171 | Spectral=0.0476 | Relational=0.0068
+  [hybrid s=123] ep  264/400  loss=0.0123  Spatial=0.0007 | Temporal=0.0063 | Spectral=0.0333 | Relational=0.0090
+  [hybrid s=123] ep  330/400  loss=0.0129  Spatial=0.0013 | Temporal=0.0064 | Spectral=0.0398 | Relational=0.0041
+  [hybrid s=123] ep  396/400  loss=0.0175  Spatial=0.0010 | Temporal=0.0040 | Spectral=0.0628 | Relational=0.0021
+
+  [hybrid s=123]  Overall: 0.0135  |  Params: 352,280
+    Spatial     : 0.0015
+    Temporal    : 0.0111
+    Spectral    : 0.0363
+    Relational  : 0.0049
+  Routing weights:
+                FFN          Spatial      Temporal     Spectral     
+    Spatial     0.278        0.254        0.248        0.220        
+    Temporal    0.387        0.206        0.224        0.183        
+    Spectral    0.172        0.250        0.302        0.276        
+    Relational  0.001        0.002        0.989        0.007        
+  Seed 123: H=0.0195  Het=0.0168  Hyb=0.0135
+  [homo s=456] ep   66/400  loss=0.0307  Spatial=0.0178 | Temporal=0.0140 | Spectral=0.0783 | Relational=0.0127
+  [homo s=456] ep  132/400  loss=0.0235  Spatial=0.0299 | Temporal=0.0078 | Spectral=0.0422 | Relational=0.0139
+  [homo s=456] ep  198/400  loss=0.0231  Spatial=0.0084 | Temporal=0.0031 | Spectral=0.0743 | Relational=0.0066
+  [homo s=456] ep  264/400  loss=0.0233  Spatial=0.0076 | Temporal=0.0058 | Spectral=0.0744 | Relational=0.0053
+  [homo s=456] ep  330/400  loss=0.0181  Spatial=0.0093 | Temporal=0.0029 | Spectral=0.0352 | Relational=0.0250
+  [homo s=456] ep  396/400  loss=0.0184  Spatial=0.0144 | Temporal=0.0023 | Spectral=0.0511 | Relational=0.0056
+
+  [homo s=456]  Overall: 0.0194  |  Params: 689,800
+    Spatial     : 0.0153
+    Temporal    : 0.0046
+    Spectral    : 0.0498
+    Relational  : 0.0080
+  Routing weights:
+                FFN_0        FFN_1        FFN_2        FFN_3        
+    Spatial     0.278        0.210        0.232        0.279        
+    Temporal    0.343        0.093        0.167        0.397        
+    Spectral    0.300        0.273        0.323        0.104        
+    Relational  0.232        0.001        0.768        0.000        
+  [hetero s=456] ep   66/400  loss=0.0394  Spatial=0.0183 | Temporal=0.0649 | Spectral=0.0719 | Relational=0.0026
+  [hetero s=456] ep  132/400  loss=0.0172  Spatial=0.0116 | Temporal=0.0110 | Spectral=0.0380 | Relational=0.0082
+  [hetero s=456] ep  198/400  loss=0.0275  Spatial=0.0041 | Temporal=0.0162 | Spectral=0.0864 | Relational=0.0034
+  [hetero s=456] ep  264/400  loss=0.0215  Spatial=0.0142 | Temporal=0.0072 | Spectral=0.0603 | Relational=0.0042
+  [hetero s=456] ep  330/400  loss=0.0135  Spatial=0.0071 | Temporal=0.0085 | Spectral=0.0351 | Relational=0.0035
+  [hetero s=456] ep  396/400  loss=0.0178  Spatial=0.0047 | Temporal=0.0039 | Spectral=0.0569 | Relational=0.0056
+
+  [hetero s=456]  Overall: 0.0164  |  Params: 220,280
+    Spatial     : 0.0066
+    Temporal    : 0.0082
+    Spectral    : 0.0461
+    Relational  : 0.0047
+  Routing weights:
+                Spatial      Temporal     Spectral     Relational   
+    Spatial     0.266        0.243        0.246        0.245        
+    Temporal    0.285        0.222        0.243        0.251        
+    Spectral    0.268        0.244        0.221        0.267        
+    Relational  0.170        0.800        0.004        0.026        
+  [hybrid s=456] ep   66/400  loss=0.0304  Spatial=0.0051 | Temporal=0.0515 | Spectral=0.0617 | Relational=0.0033
+  [hybrid s=456] ep  132/400  loss=0.0259  Spatial=0.0105 | Temporal=0.0124 | Spectral=0.0757 | Relational=0.0049
+  [hybrid s=456] ep  198/400  loss=0.0257  Spatial=0.0075 | Temporal=0.0447 | Spectral=0.0472 | Relational=0.0035
+  [hybrid s=456] ep  264/400  loss=0.0128  Spatial=0.0028 | Temporal=0.0091 | Spectral=0.0361 | Relational=0.0032
+  [hybrid s=456] ep  330/400  loss=0.0169  Spatial=0.0068 | Temporal=0.0086 | Spectral=0.0483 | Relational=0.0038
+  [hybrid s=456] ep  396/400  loss=0.0238  Spatial=0.0024 | Temporal=0.0126 | Spectral=0.0783 | Relational=0.0019
+
+  [hybrid s=456]  Overall: 0.0166  |  Params: 352,280
+    Spatial     : 0.0057
+    Temporal    : 0.0082
+    Spectral    : 0.0478
+    Relational  : 0.0047
+  Routing weights:
+                FFN          Spatial      Temporal     Spectral     
+    Spatial     0.305        0.229        0.246        0.220        
+    Temporal    0.448        0.178        0.264        0.110        
+    Spectral    0.277        0.294        0.235        0.194        
+    Relational  0.037        0.864        0.099        0.001        
+  Seed 456: H=0.0194  Het=0.0164  Hyb=0.0166
+  [homo s=789] ep   66/400  loss=0.0310  Spatial=0.0314 | Temporal=0.0473 | Spectral=0.0395 | Relational=0.0057
+  [homo s=789] ep  132/400  loss=0.0216  Spatial=0.0195 | Temporal=0.0073 | Spectral=0.0508 | Relational=0.0088
+  [homo s=789] ep  198/400  loss=0.0167  Spatial=0.0116 | Temporal=0.0070 | Spectral=0.0417 | Relational=0.0066
+  [homo s=789] ep  264/400  loss=0.0164  Spatial=0.0057 | Temporal=0.0133 | Spectral=0.0387 | Relational=0.0078
+  [homo s=789] ep  330/400  loss=0.0132  Spatial=0.0143 | Temporal=0.0043 | Spectral=0.0281 | Relational=0.0061
+  [homo s=789] ep  396/400  loss=0.0217  Spatial=0.0224 | Temporal=0.0048 | Spectral=0.0510 | Relational=0.0087
+
+  [homo s=789]  Overall: 0.0220  |  Params: 689,800
+    Spatial     : 0.0168
+    Temporal    : 0.0064
+    Spectral    : 0.0572
+    Relational  : 0.0077
+  Routing weights:
+                FFN_0        FFN_1        FFN_2        FFN_3        
+    Spatial     0.246        0.253        0.268        0.233        
+    Temporal    0.171        0.290        0.373        0.165        
+    Spectral    0.295        0.332        0.252        0.120        
+    Relational  0.001        0.996        0.002        0.000        
+  [hetero s=789] ep   66/400  loss=0.0187  Spatial=0.0136 | Temporal=0.0154 | Spectral=0.0393 | Relational=0.0065
+  [hetero s=789] ep  132/400  loss=0.0186  Spatial=0.0119 | Temporal=0.0205 | Spectral=0.0360 | Relational=0.0059
+  [hetero s=789] ep  198/400  loss=0.0147  Spatial=0.0066 | Temporal=0.0080 | Spectral=0.0412 | Relational=0.0029
+  [hetero s=789] ep  264/400  loss=0.0127  Spatial=0.0007 | Temporal=0.0125 | Spectral=0.0311 | Relational=0.0066
+  [hetero s=789] ep  330/400  loss=0.0183  Spatial=0.0099 | Temporal=0.0144 | Spectral=0.0447 | Relational=0.0041
+  [hetero s=789] ep  396/400  loss=0.0137  Spatial=0.0012 | Temporal=0.0068 | Spectral=0.0384 | Relational=0.0082
+
+  [hetero s=789]  Overall: 0.0175  |  Params: 220,280
+    Spatial     : 0.0045
+    Temporal    : 0.0131
+    Spectral    : 0.0472
+    Relational  : 0.0052
+  Routing weights:
+                Spatial      Temporal     Spectral     Relational   
+    Spatial     0.235        0.271        0.218        0.277        
+    Temporal    0.218        0.296        0.223        0.262        
+    Spectral    0.281        0.222        0.189        0.307        
+    Relational  0.845        0.003        0.001        0.152        
+  [hybrid s=789] ep   66/400  loss=0.0250  Spatial=0.0109 | Temporal=0.0364 | Spectral=0.0446 | Relational=0.0078
+  [hybrid s=789] ep  132/400  loss=0.0175  Spatial=0.0088 | Temporal=0.0069 | Spectral=0.0494 | Relational=0.0048
+  [hybrid s=789] ep  198/400  loss=0.0121  Spatial=0.0029 | Temporal=0.0168 | Spectral=0.0246 | Relational=0.0040
+  [hybrid s=789] ep  264/400  loss=0.0271  Spatial=0.0032 | Temporal=0.0098 | Spectral=0.0868 | Relational=0.0086
+  [hybrid s=789] ep  330/400  loss=0.0121  Spatial=0.0027 | Temporal=0.0038 | Spectral=0.0381 | Relational=0.0037
+  [hybrid s=789] ep  396/400  loss=0.0178  Spatial=0.0043 | Temporal=0.0034 | Spectral=0.0532 | Relational=0.0103
+
+  [hybrid s=789]  Overall: 0.0154  |  Params: 352,280
+    Spatial     : 0.0051
+    Temporal    : 0.0072
+    Spectral    : 0.0449
+    Relational  : 0.0042
+  Routing weights:
+                FFN          Spatial      Temporal     Spectral     
+    Spatial     0.251        0.265        0.253        0.232        
+    Temporal    0.332        0.300        0.205        0.163        
+    Spectral    0.264        0.208        0.335        0.193        
+    Relational  0.010        0.002        0.987        0.001        
+  Seed 789: H=0.0220  Het=0.0175  Hyb=0.0154
+  [homo s=1337] ep   66/400  loss=0.0349  Spatial=0.0349 | Temporal=0.0303 | Spectral=0.0626 | Relational=0.0116
+  [homo s=1337] ep  132/400  loss=0.0272  Spatial=0.0255 | Temporal=0.0193 | Spectral=0.0545 | Relational=0.0094
+  [homo s=1337] ep  198/400  loss=0.0231  Spatial=0.0158 | Temporal=0.0098 | Spectral=0.0443 | Relational=0.0224
+  [homo s=1337] ep  264/400  loss=0.0116  Spatial=0.0066 | Temporal=0.0040 | Spectral=0.0336 | Relational=0.0020
+  [homo s=1337] ep  330/400  loss=0.0220  Spatial=0.0072 | Temporal=0.0033 | Spectral=0.0673 | Relational=0.0102
+  [homo s=1337] ep  396/400  loss=0.0314  Spatial=0.0048 | Temporal=0.0156 | Spectral=0.0913 | Relational=0.0139
+
+  [homo s=1337]  Overall: 0.0225  |  Params: 689,800
+    Spatial     : 0.0163
+    Temporal    : 0.0078
+    Spectral    : 0.0561
+    Relational  : 0.0098
+  Routing weights:
+                FFN_0        FFN_1        FFN_2        FFN_3        
+    Spatial     0.283        0.252        0.238        0.226        
+    Temporal    0.309        0.336        0.206        0.148        
+    Spectral    0.235        0.233        0.386        0.147        
+    Relational  0.001        0.001        0.998        0.000        
+  [hetero s=1337] ep   66/400  loss=0.0399  Spatial=0.0129 | Temporal=0.0351 | Spectral=0.0758 | Relational=0.0358
+  [hetero s=1337] ep  132/400  loss=0.0301  Spatial=0.0158 | Temporal=0.0516 | Spectral=0.0439 | Relational=0.0090
+  [hetero s=1337] ep  198/400  loss=0.0182  Spatial=0.0131 | Temporal=0.0169 | Spectral=0.0378 | Relational=0.0049
+  [hetero s=1337] ep  264/400  loss=0.0253  Spatial=0.0084 | Temporal=0.0400 | Spectral=0.0480 | Relational=0.0048
+  [hetero s=1337] ep  330/400  loss=0.0176  Spatial=0.0044 | Temporal=0.0100 | Spectral=0.0496 | Relational=0.0064
+  [hetero s=1337] ep  396/400  loss=0.0195  Spatial=0.0065 | Temporal=0.0114 | Spectral=0.0547 | Relational=0.0055
+
+  [hetero s=1337]  Overall: 0.0183  |  Params: 220,280
+    Spatial     : 0.0050
+    Temporal    : 0.0141
+    Spectral    : 0.0487
+    Relational  : 0.0055
+  Routing weights:
+                Spatial      Temporal     Spectral     Relational   
+    Spatial     0.248        0.256        0.225        0.270        
+    Temporal    0.244        0.310        0.191        0.254        
+    Spectral    0.280        0.220        0.209        0.292        
+    Relational  0.777        0.004        0.003        0.216        
+  [hybrid s=1337] ep   66/400  loss=0.0315  Spatial=0.0048 | Temporal=0.0621 | Spectral=0.0522 | Relational=0.0070
+  [hybrid s=1337] ep  132/400  loss=0.0114  Spatial=0.0017 | Temporal=0.0096 | Spectral=0.0291 | Relational=0.0052
+  [hybrid s=1337] ep  198/400  loss=0.0173  Spatial=0.0052 | Temporal=0.0061 | Spectral=0.0460 | Relational=0.0120
+  [hybrid s=1337] ep  264/400  loss=0.0156  Spatial=0.0056 | Temporal=0.0090 | Spectral=0.0437 | Relational=0.0042
+  [hybrid s=1337] ep  330/400  loss=0.0181  Spatial=0.0021 | Temporal=0.0069 | Spectral=0.0608 | Relational=0.0027
+  [hybrid s=1337] ep  396/400  loss=0.0150  Spatial=0.0039 | Temporal=0.0258 | Spectral=0.0249 | Relational=0.0053
+
+  [hybrid s=1337]  Overall: 0.0156  |  Params: 352,280
+    Spatial     : 0.0034
+    Temporal    : 0.0094
+    Spectral    : 0.0450
+    Relational  : 0.0048
+  Routing weights:
+                FFN          Spatial      Temporal     Spectral     
+    Spatial     0.282        0.234        0.250        0.234        
+    Temporal    0.392        0.215        0.234        0.159        
+    Spectral    0.336        0.189        0.290        0.184        
+    Relational  0.376        0.001        0.622        0.001        
+  Seed 1337: H=0.0225  Het=0.0183  Hyb=0.0156
+
+=================================================================
+  EXPERIMENT 4: Scale Test (small → medium → large)
+=================================================================
+
+  ── Hidden dim = 64 ──
+  [homo h=64] ep   66/400  loss=0.0366  Spatial=0.0178 | Temporal=0.0327 | Spectral=0.0863 | Relational=0.0097
+  [homo h=64] ep  132/400  loss=0.0317  Spatial=0.0224 | Temporal=0.0131 | Spectral=0.0688 | Relational=0.0224
+  [homo h=64] ep  198/400  loss=0.0229  Spatial=0.0118 | Temporal=0.0049 | Spectral=0.0621 | Relational=0.0129
+  [homo h=64] ep  264/400  loss=0.0230  Spatial=0.0124 | Temporal=0.0073 | Spectral=0.0642 | Relational=0.0081
+  [homo h=64] ep  330/400  loss=0.0342  Spatial=0.0106 | Temporal=0.0681 | Spectral=0.0478 | Relational=0.0104
+  [homo h=64] ep  396/400  loss=0.0249  Spatial=0.0064 | Temporal=0.0110 | Spectral=0.0733 | Relational=0.0088
+
+  [homo h=64]  Overall: 0.0206  |  Params: 402,568
+    Spatial     : 0.0165
+    Temporal    : 0.0055
+    Spectral    : 0.0507
+    Relational  : 0.0096
+  Routing weights:
+                FFN_0        FFN_1        FFN_2        FFN_3        
+    Spatial     0.287        0.245        0.205        0.263        
+    Temporal    0.349        0.216        0.104        0.330        
+    Spectral    0.330        0.238        0.165        0.267        
+    Relational  0.021        0.643        0.000        0.336        
+  [hetero h=64] ep   66/400  loss=0.0277  Spatial=0.0078 | Temporal=0.0306 | Spectral=0.0648 | Relational=0.0075
+  [hetero h=64] ep  132/400  loss=0.0338  Spatial=0.0013 | Temporal=0.0706 | Spectral=0.0558 | Relational=0.0076
+  [hetero h=64] ep  198/400  loss=0.0179  Spatial=0.0110 | Temporal=0.0133 | Spectral=0.0443 | Relational=0.0029
+  [hetero h=64] ep  264/400  loss=0.0161  Spatial=0.0047 | Temporal=0.0156 | Spectral=0.0383 | Relational=0.0058
+  [hetero h=64] ep  330/400  loss=0.0136  Spatial=0.0057 | Temporal=0.0060 | Spectral=0.0386 | Relational=0.0040
+  [hetero h=64] ep  396/400  loss=0.0093  Spatial=0.0048 | Temporal=0.0032 | Spectral=0.0247 | Relational=0.0046
+
+  [hetero h=64]  Overall: 0.0187  |  Params: 154,560
+    Spatial     : 0.0073
+    Temporal    : 0.0113
+    Spectral    : 0.0515
+    Relational  : 0.0045
+  Routing weights:
+                Spatial      Temporal     Spectral     Relational   
+    Spatial     0.299        0.239        0.208        0.254        
+    Temporal    0.274        0.297        0.221        0.207        
+    Spectral    0.276        0.217        0.213        0.294        
+    Relational  0.224        0.175        0.594        0.007        
+  [hybrid h=64] ep   66/400  loss=0.0248  Spatial=0.0065 | Temporal=0.0240 | Spectral=0.0643 | Relational=0.0044
+  [hybrid h=64] ep  132/400  loss=0.0311  Spatial=0.0062 | Temporal=0.0233 | Spectral=0.0890 | Relational=0.0058
+  [hybrid h=64] ep  198/400  loss=0.0138  Spatial=0.0049 | Temporal=0.0103 | Spectral=0.0348 | Relational=0.0053
+  [hybrid h=64] ep  264/400  loss=0.0128  Spatial=0.0045 | Temporal=0.0023 | Spectral=0.0407 | Relational=0.0037
+  [hybrid h=64] ep  330/400  loss=0.0170  Spatial=0.0036 | Temporal=0.0034 | Spectral=0.0554 | Relational=0.0057
+  [hybrid h=64] ep  396/400  loss=0.0160  Spatial=0.0030 | Temporal=0.0023 | Spectral=0.0550 | Relational=0.0037
+
+  [hybrid h=64]  Overall: 0.0168  |  Params: 220,048
+    Spatial     : 0.0048
+    Temporal    : 0.0124
+    Spectral    : 0.0449
+    Relational  : 0.0053
+  Routing weights:
+                FFN          Spatial      Temporal     Spectral     
+    Spatial     0.290        0.255        0.228        0.227        
+    Temporal    0.336        0.235        0.243        0.186        
+    Spectral    0.291        0.363        0.183        0.163        
+    Relational  0.004        0.995        0.001        0.000        
+
+  ── Hidden dim = 128 ──
+  [homo h=128] ep   66/400  loss=0.0345  Spatial=0.0142 | Temporal=0.0244 | Spectral=0.0919 | Relational=0.0075
+  [homo h=128] ep  132/400  loss=0.0290  Spatial=0.0220 | Temporal=0.0112 | Spectral=0.0708 | Relational=0.0120
+  [homo h=128] ep  198/400  loss=0.0171  Spatial=0.0111 | Temporal=0.0052 | Spectral=0.0426 | Relational=0.0097
+  [homo h=128] ep  264/400  loss=0.0220  Spatial=0.0200 | Temporal=0.0021 | Spectral=0.0547 | Relational=0.0112
+  [homo h=128] ep  330/400  loss=0.0163  Spatial=0.0046 | Temporal=0.0055 | Spectral=0.0482 | Relational=0.0067
+  [homo h=128] ep  396/400  loss=0.0181  Spatial=0.0234 | Temporal=0.0053 | Spectral=0.0375 | Relational=0.0064
+
+  [homo h=128]  Overall: 0.0203  |  Params: 689,800
+    Spatial     : 0.0150
+    Temporal    : 0.0046
+    Spectral    : 0.0531
+    Relational  : 0.0084
+  Routing weights:
+                FFN_0        FFN_1        FFN_2        FFN_3        
+    Spatial     0.227        0.272        0.292        0.209        
+    Temporal    0.167        0.335        0.353        0.145        
+    Spectral    0.370        0.257        0.174        0.198        
+    Relational  0.997        0.002        0.001        0.000        
+  [hetero h=128] ep   66/400  loss=0.0525  Spatial=0.0122 | Temporal=0.1020 | Spectral=0.0657 | Relational=0.0299
+  [hetero h=128] ep  132/400  loss=0.0196  Spatial=0.0083 | Temporal=0.0264 | Spectral=0.0404 | Relational=0.0034
+  [hetero h=128] ep  198/400  loss=0.0175  Spatial=0.0043 | Temporal=0.0060 | Spectral=0.0539 | Relational=0.0059
+  [hetero h=128] ep  264/400  loss=0.0157  Spatial=0.0066 | Temporal=0.0179 | Spectral=0.0321 | Relational=0.0062
+  [hetero h=128] ep  330/400  loss=0.0166  Spatial=0.0025 | Temporal=0.0172 | Spectral=0.0435 | Relational=0.0030
+  [hetero h=128] ep  396/400  loss=0.0137  Spatial=0.0031 | Temporal=0.0089 | Spectral=0.0394 | Relational=0.0032
+
+  [hetero h=128]  Overall: 0.0167  |  Params: 220,280
+    Spatial     : 0.0040
+    Temporal    : 0.0102
+    Spectral    : 0.0471
+    Relational  : 0.0056
+  Routing weights:
+                Spatial      Temporal     Spectral     Relational   
+    Spatial     0.255        0.246        0.255        0.243        
+    Temporal    0.266        0.247        0.205        0.282        
+    Spectral    0.370        0.172        0.193        0.265        
+    Relational  0.555        0.000        0.001        0.444        
+  [hybrid h=128] ep   66/400  loss=0.0571  Spatial=0.0105 | Temporal=0.1220 | Spectral=0.0857 | Relational=0.0100
+  [hybrid h=128] ep  132/400  loss=0.0210  Spatial=0.0042 | Temporal=0.0467 | Spectral=0.0289 | Relational=0.0041
+  [hybrid h=128] ep  198/400  loss=0.0174  Spatial=0.0020 | Temporal=0.0158 | Spectral=0.0468 | Relational=0.0049
+  [hybrid h=128] ep  264/400  loss=0.0304  Spatial=0.0051 | Temporal=0.0064 | Spectral=0.1011 | Relational=0.0092
+  [hybrid h=128] ep  330/400  loss=0.0283  Spatial=0.0066 | Temporal=0.0349 | Spectral=0.0637 | Relational=0.0080
+  [hybrid h=128] ep  396/400  loss=0.0293  Spatial=0.0069 | Temporal=0.0490 | Spectral=0.0557 | Relational=0.0054
+
+  [hybrid h=128]  Overall: 0.0155  |  Params: 352,280
+    Spatial     : 0.0039
+    Temporal    : 0.0078
+    Spectral    : 0.0457
+    Relational  : 0.0047
+  Routing weights:
+                FFN          Spatial      Temporal     Spectral     
+    Spatial     0.280        0.258        0.228        0.234        
+    Temporal    0.400        0.209        0.213        0.178        
+    Spectral    0.322        0.307        0.203        0.168        
+    Relational  0.178        0.819        0.003        0.000        
+
+  ── Hidden dim = 256 ──
+  [homo h=256] ep   66/400  loss=0.0176  Spatial=0.0095 | Temporal=0.0145 | Spectral=0.0402 | Relational=0.0061
+  [homo h=256] ep  132/400  loss=0.0269  Spatial=0.0104 | Temporal=0.0108 | Spectral=0.0807 | Relational=0.0055
+  [homo h=256] ep  198/400  loss=0.0224  Spatial=0.0390 | Temporal=0.0066 | Spectral=0.0377 | Relational=0.0064
+  [homo h=256] ep  264/400  loss=0.0132  Spatial=0.0110 | Temporal=0.0201 | Spectral=0.0167 | Relational=0.0050
+  [homo h=256] ep  330/400  loss=0.0220  Spatial=0.0169 | Temporal=0.0141 | Spectral=0.0472 | Relational=0.0097
+  [homo h=256] ep  396/400  loss=0.0200  Spatial=0.0126 | Temporal=0.0061 | Spectral=0.0445 | Relational=0.0166
+
+  [homo h=256]  Overall: 0.0205  |  Params: 1,313,416
+    Spatial     : 0.0125
+    Temporal    : 0.0067
+    Spectral    : 0.0531
+    Relational  : 0.0097
+  Routing weights:
+                FFN_0        FFN_1        FFN_2        FFN_3        
+    Spatial     0.233        0.286        0.230        0.252        
+    Temporal    0.205        0.349        0.262        0.184        
+    Spectral    0.365        0.355        0.097        0.183        
+    Relational  0.982        0.018        0.000        0.000        
+  [hetero h=256] ep   66/400  loss=0.0241  Spatial=0.0135 | Temporal=0.0383 | Spectral=0.0383 | Relational=0.0063
+  [hetero h=256] ep  132/400  loss=0.0199  Spatial=0.0053 | Temporal=0.0235 | Spectral=0.0436 | Relational=0.0070
+  [hetero h=256] ep  198/400  loss=0.0213  Spatial=0.0046 | Temporal=0.0235 | Spectral=0.0529 | Relational=0.0041
+  [hetero h=256] ep  264/400  loss=0.0279  Spatial=0.0039 | Temporal=0.0667 | Spectral=0.0332 | Relational=0.0080
+  [hetero h=256] ep  330/400  loss=0.0149  Spatial=0.0009 | Temporal=0.0068 | Spectral=0.0487 | Relational=0.0033
+  [hetero h=256] ep  396/400  loss=0.0107  Spatial=0.0012 | Temporal=0.0076 | Spectral=0.0313 | Relational=0.0027
+
+  [hetero h=256]  Overall: 0.0153  |  Params: 480,360
+    Spatial     : 0.0028
+    Temporal    : 0.0098
+    Spectral    : 0.0442
+    Relational  : 0.0046
+  Routing weights:
+                Spatial      Temporal     Spectral     Relational   
+    Spatial     0.246        0.235        0.228        0.291        
+    Temporal    0.344        0.206        0.185        0.266        
+    Spectral    0.184        0.286        0.216        0.315        
+    Relational  0.003        0.834        0.002        0.160        
+  [hybrid h=256] ep   66/400  loss=0.0267  Spatial=0.0053 | Temporal=0.0556 | Spectral=0.0368 | Relational=0.0092
+  [hybrid h=256] ep  132/400  loss=0.0147  Spatial=0.0044 | Temporal=0.0185 | Spectral=0.0318 | Relational=0.0041
+  [hybrid h=256] ep  198/400  loss=0.0151  Spatial=0.0036 | Temporal=0.0051 | Spectral=0.0494 | Relational=0.0025
+  [hybrid h=256] ep  264/400  loss=0.0156  Spatial=0.0053 | Temporal=0.0066 | Spectral=0.0472 | Relational=0.0033
+  [hybrid h=256] ep  330/400  loss=0.0149  Spatial=0.0053 | Temporal=0.0071 | Spectral=0.0406 | Relational=0.0067
+  [hybrid h=256] ep  396/400  loss=0.0141  Spatial=0.0023 | Temporal=0.0044 | Spectral=0.0439 | Relational=0.0059
+
+  [hybrid h=256]  Overall: 0.0148  |  Params: 748,456
+    Spatial     : 0.0030
+    Temporal    : 0.0066
+    Spectral    : 0.0448
+    Relational  : 0.0050
+  Routing weights:
+                FFN          Spatial      Temporal     Spectral     
+    Spatial     0.255        0.271        0.228        0.247        
+    Temporal    0.310        0.322        0.210        0.158        
+    Spectral    0.235        0.309        0.260        0.196        
+    Relational  0.007        0.147        0.846        0.001        
+
+  All figures saved to hetmoe_v2_results/
+
+======================================================================
+  ╔══════════════════════════════════════════╗
+  ║        FINAL RESULTS SUMMARY (v2)        ║
+  ╚══════════════════════════════════════════╝
+======================================================================
+
+  ┌─ EXPERIMENT 1: Core Comparison ─────────────────────────
+  │ Model                       Params  Overall  Spatial  Tempora  Spectra  Relatio
+  │ ───────────────────────────────────────────────────────────────
+  │ Homo 4×FFN                 689,800   0.0203   0.0150   0.0046   0.0531   0.0084
+  │ Hetero                     220,280   0.0167   0.0040   0.0102   0.0471   0.0056
+  │ Hybrid                     352,280   0.0155   0.0039   0.0078   0.0457   0.0047
+  │ Hetero vs Homo: +17.6%
+  │ Hybrid vs Homo: +23.7%
+  └──────────────────────────────────────────────────────
+
+  ┌─ EXPERIMENT 2: Param-Matched ─────────────────────────
+  │ Big Homo                  1,313,416   0.0205
+  │ Hetero (matched)           401,144   0.0169
+  │ Hybrid (matched)           637,276   0.0142
+  └──────────────────────────────────────────────────────
+
+  ┌─ EXPERIMENT 3: Robustness ────────────────────────────
+  │ homo      : 0.0208 ± 0.0013
+  │ hetero    : 0.0171 ± 0.0007
+  │ hybrid    : 0.0153 ± 0.0010
+  │ Hetero wins: 5/5  |  Hybrid wins: 5/5
+  └──────────────────────────────────────────────────────
+
+  ┌─ EXPERIMENT 4: Scaling ──────────────────────────────
+  │ Hidden=64:
+  │   homo      : MSE=0.0206  params=402,568
+  │   hetero    : MSE=0.0187  params=154,560
+  │   hybrid    : MSE=0.0168  params=220,048
+  │ Hidden=128:
+  │   homo      : MSE=0.0203  params=689,800
+  │   hetero    : MSE=0.0167  params=220,280
+  │   hybrid    : MSE=0.0155  params=352,280
+  │ Hidden=256:
+  │   homo      : MSE=0.0205  params=1,313,416
+  │   hetero    : MSE=0.0153  params=480,360
+  │   hybrid    : MSE=0.0148  params=748,456
+  └──────────────────────────────────────────────────────
+======================================================================
+
+  Total time: 1188s (19.8 min)
+  Results saved to hetmoe_v2_results/
+(.venv) suraj@atlas:/data/hetergenous-moe$ 

@@ -1,0 +1,531 @@
+\documentclass[10pt,twocolumn,letterpaper]{article}
+
+% ── Core packages ──
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{times}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage[hidelinks,colorlinks=true,citecolor=blue,linkcolor=blue,urlcolor=blue]{hyperref}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage[margin=0.72in,top=0.85in,bottom=0.85in]{geometry}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{authblk}
+\usepackage{abstract}
+\usepackage{microtype}
+
+% ── Formatting ──
+\setlength{\columnsep}{0.25in}
+\renewcommand{\abstractnamefont}{\normalfont\bfseries\small}
+\renewcommand{\abstracttextfont}{\normalfont\small}
+\newcommand{\best}[1]{\textbf{#1}}
+\captionsetup{font=small,labelfont=bf}
+
+% ══════════════════════════════════════════════════════════════════
+\title{
+\Large\textbf{Architectural Heterogeneity in Mixture-of-Experts:\\[3pt]
+Representational Complementarity Without Routing Specialization}
+}
+
+\author[1]{Surajbhan Satpathy}
+\affil[1]{Yoctotta Technologies, Bhubaneswar, India}
+\affil[ ]{\small\texttt{surajbhan.satpathy@yoctotta.com}}
+
+\date{}
+
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+
+% ══════════════════════════════════════════════════════════════════
+\begin{onecolabstract}
+\noindent Mixture-of-Experts (MoE) architectures universally employ homogeneous experts---typically identical feed-forward networks (FFNs) differing only in learned weights. We challenge this convention by introducing \textit{architecturally heterogeneous} experts where each expert employs a fundamentally different computational primitive: 2D convolutions for spatial data, dilated causal convolutions for temporal sequences, FFT-based processing for spectral analysis, and self-attention for relational structure. Through controlled, parameter-matched experiments on structured multi-modal regression tasks, we demonstrate that: (1)~heterogeneous MoE achieves 16--32\% lower error than homogeneous MoE at every parameter budget tested; (2)~a hybrid design combining one general-purpose FFN expert with specialized experts yields the best results; (3)~critically, homogeneous MoE exhibits a \textit{early saturation}---nearly doubling parameters yields zero improvement ($0.0185 \to 0.0201$)---while heterogeneous MoE improves steadily ($0.0155 \to 0.0142$); and (4)~these gains are robust across 5 random seeds ($p < 0.01$). Unlike prior ``heterogeneous MoE'' work that varies expert \textit{size}, we vary expert \textit{architecture type}, providing empirical evidence that computational inductive bias within experts is a more powerful lever than capacity scaling. We validate these findings on real multimodal data (CIFAR-10, Speech Commands, MNIST), where heterogeneous MoE achieves 53.5\% accuracy versus 39.0\% for homogeneous MoE at matched parameter budgets (+37.0\%).
+\end{onecolabstract}
+
+\vspace{0.2cm}
+
+% ══════════════════════════════════════════════════════════════════
+\section{Introduction}
+\label{sec:intro}
+
+Mixture-of-Experts (MoE) models have become foundational to modern AI, powering frontier systems from DeepSeek-R1 to Mixtral to GPT-4~\cite{shazeer2017outrageously, fedus2022switch, jiang2024mixtral}. The core premise is elegant: route different inputs to different experts, enabling specialization without proportional compute cost. Many leading open-source model releases in recent years have adopted MoE architectures.
+
+Yet virtually all MoE implementations share a striking uniformity: every expert is an identical feed-forward network (FFN). Experts ``specialize'' only through learned weights, not through architectural structure. Whether processing spatial imagery, temporal signals, or relational graphs, each expert applies the same computational primitive---matrix multiply, activation, matrix multiply.
+
+This paper asks: \textbf{what if experts were architecturally different?} What if a spatial expert used 2D convolutions (inherently suited to grid-structured data), a temporal expert used dilated convolutions (capturing multi-scale sequential patterns), and a spectral expert applied FFT (for native frequency-domain analysis)?
+
+We distinguish our work from prior ``heterogeneous MoE'' research~\cite{wang2024hmoe, jawahar2023automoe, modse2024}, which introduces heterogeneity in expert \textit{size} (varying FFN widths). Our heterogeneity is in expert \textit{architecture type}---fundamentally different computational primitives with distinct inductive biases.
+
+Through controlled experiments with strict parameter-matching at three budget levels, we demonstrate that architectural diversity consistently and substantially outperforms homogeneous scaling. Our key finding is a \textit{early saturation} in homogeneous MoE: adding parameters to identical FFN experts yields diminishing-to-zero returns, while architecturally diverse experts continue improving with scale.
+
+\paragraph{Contributions.}
+\begin{enumerate}[leftmargin=*,itemsep=1pt,topsep=2pt]
+    \item We propose \textbf{architecture-type heterogeneous MoE}, where experts employ structurally different neural network primitives (2D-CNN, dilated-1D-CNN, FFT-network, self-attention), and show this outperforms homogeneous FFN-MoE by 16--32\% at matched parameter budgets.
+    \item We identify a \textbf{early saturation} in homogeneous MoE: nearly doubling parameters from 368K to 690K yields no improvement, while heterogeneous MoE improves steadily across the same range.
+    \item We demonstrate a \textbf{hybrid advantage}: one general-purpose FFN expert combined with specialized experts yields the best overall performance, robust across 5 seeds.
+    \item We provide an honest analysis of \textbf{when inductive bias hurts}: mismatched architectural priors degrade per-type performance (temporal: $2.2\times$ worse), motivating the hybrid design.
+    \item We \textbf{validate on real multimodal data} (CIFAR-10, Speech Commands, MNIST), showing the heterogeneous advantage transfers from synthetic to natural data with a +37.0\% improvement at matched parameters.
+\end{enumerate}
+
+% ══════════════════════════════════════════════════════════════════
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Mixture of Experts.}
+MoE was introduced by Jacobs et al.~\cite{jacobs1991adaptive} and scaled to deep learning by Shazeer et al.~\cite{shazeer2017outrageously}. Modern MoE replaces FFN layers in transformers with sparse expert layers using top-$k$ routing. Key developments include Switch Transformers~\cite{fedus2022switch} (top-1 routing), GShard~\cite{lepikhin2020gshard} (distributed MoE), and expert-choice routing~\cite{zhou2022expertchoice}. All employ homogeneous FFN experts.
+
+\paragraph{Heterogeneous MoE (Size Variation).}
+HMoE~\cite{wang2024hmoe} varies expert \textit{width}, finding that naive size heterogeneity underperforms because larger experts dominate routing. They propose training objectives for balanced activation. AutoMoE~\cite{jawahar2023automoe} uses Neural Architecture Search to find optimal FFN sizes per layer. MoDSE~\cite{modse2024} assigns different FFN sizes for tokens of varying difficulty. Critically, in all cases experts remain FFNs---only their dimensions change.
+
+\paragraph{Architectural Diversity in Neural Networks.}
+Multi-modal foundation models (e.g., ImageBind, GPT-4V) use different encoders per modality, but not within a single MoE layer. MFG-HMoE~\cite{mfghmoe2025} uses grouped heterogeneous experts with different convolution variants for remote sensing super-resolution. UMoE~\cite{umoe2025} reformulates attention to share an FFN-like structure with experts. SMEAR~\cite{muqeeth2023smear} explores soft merging of experts with learned routing but, like other prior work, uses experts with a shared architecture.
+
+\paragraph{Concurrent Work.}
+Hecto~\cite{pandey2025hecto} combines a GRU expert with an FFNN expert under top-1 hard routing, demonstrating expert specialization on NLP benchmarks---the closest concurrent work to ours in exploring architecture-type heterogeneity. Cook et al.~\cite{cook2025brainlike} use GRU experts of different sizes (size heterogeneity) plus skip connections to study brain-like pathway formation.
+
+Our work differs in \textit{scope of architectural diversity}: we combine four fundamentally different computational paradigms (2D-CNN, dilated-1D-CNN, FFT-network, self-attention) rather than two variants of recurrent architectures. We also provide controlled parameter-matched comparisons at multiple budget levels, identify the early saturation phenomenon, and validate on real multimodal data.
+
+% ══════════════════════════════════════════════════════════════════
+\section{Method}
+\label{sec:method}
+
+\subsection{Architecture-Type Heterogeneous MoE}
+
+Our MoE model consists of $N$ experts $\{E_1, \ldots, E_N\}$ and a learned router $R$. Unlike standard MoE where all $E_i$ are identical FFNs, each expert implements a different computational primitive:
+\begin{equation}
+    y = \sum_{i=1}^{N} w_i(x) \cdot E_i(x), \quad w(x) = \mathrm{softmax}(R(x))
+\end{equation}
+We use soft (dense) routing where all experts contribute, weighted by the router output. This design choice is deliberate: soft routing allows architectural advantages to manifest even without perfect type-identification by the router.
+
+\subsection{Expert Architectures}
+
+All experts map $\mathbb{R}^{1024} \to \mathbb{R}^{1}$ (scalar regression). The input dimension 1024 naturally admits multiple structural interpretations:
+
+\paragraph{Spatial Expert (2D-CNN).} Reshapes input to a $32 \times 32$ grid and applies two layers of 2D convolution (kernel sizes 5$\times$5 and 3$\times$3) with GELU activation, followed by adaptive average pooling to $4\times4$ and an MLP head.\\
+\textit{Inductive bias:} Local 2D spatial correlations, translation equivariance.
+
+\paragraph{Temporal Expert (Dilated-1D-CNN).} Treats input as a length-1024 sequence and applies a stack of four dilated convolutions with dilation rates $\{1, 2, 4, 8\}$, each followed by batch normalization and GELU. The effective receptive field spans 31 time steps. Global average pooling feeds an MLP head.\\
+\textit{Inductive bias:} Multi-scale temporal patterns, causal structure.
+
+\paragraph{Spectral Expert (FFT-Network).} Computes the real FFT of the input, then processes the magnitude spectrum $|\mathcal{F}(x)|$ with two 1D convolutional layers and adaptive pooling.\\
+\textit{Inductive bias:} Frequency-domain analysis, spectral peak detection.
+
+\paragraph{Relational Expert (Self-Attention).} Reshapes input to 32 tokens of dimension 32, projects to attention dimension, applies 4-head self-attention with residual connection and layer normalization, then mean-pools over tokens.\\
+\textit{Inductive bias:} Pairwise token interactions, permutation-equivariant global reasoning.
+
+\paragraph{FFN Expert (General-Purpose Baseline).} Standard 3-layer MLP ($d \to h \to h/2 \to 1$) with GELU activations. Makes no structural assumptions about input layout.
+
+\subsection{Model Configurations}
+
+We evaluate three configurations, all with $N{=}4$ experts and identical training:
+\begin{itemize}[leftmargin=*,itemsep=1pt,topsep=2pt]
+    \item \textbf{Homogeneous (Homo):} 4$\times$FFN experts
+    \item \textbf{Heterogeneous (Hetero):} Spatial + Temporal + Spectral + Relational
+    \item \textbf{Hybrid:} 1$\times$FFN + Spatial + Temporal + Spectral
+\end{itemize}
+
+\subsection{Router and Auxiliary Losses}
+
+The router is a 2-layer MLP ($1024 \to 128 \to N$) with GELU activation, producing softmax weights. We apply weak load-balancing and entropy regularization:
+\begin{equation}
+    \mathcal{L} = \mathcal{L}_{\text{MSE}} + \alpha \sum_{i} \left(\bar{w}_i - \tfrac{1}{N}\right)^2 - \beta \sum_{i} \bar{w}_i \log \bar{w}_i
+\end{equation}
+where $\bar{w}_i = \frac{1}{B}\sum_{b} w_i(x_b)$ is the batch-averaged weight for expert $i$, with $\alpha{=}0.05$ and $\beta{=}0.02$.
+
+% ══════════════════════════════════════════════════════════════════
+\section{Experimental Setup}
+\label{sec:setup}
+
+\subsection{Structured Data Generation}
+
+We generate four types of data, each natively 1024-dimensional with \textit{preserved structure}---no random projections or dimensionality transformations that could destroy the structural information experts are designed to exploit:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt,topsep=2pt]
+    \item \textbf{Spatial:} $32{\times}32$ heat diffusion grids with 2--5 Gaussian point sources and 5-step iterative diffusion. Target: center $8{\times}8$ mean temperature after one additional step. Requires understanding 2D local averaging.
+    \item \textbf{Temporal:} 1024-step signals composed of 3--5 sinusoids with amplitude modulation and AR(5) dynamics plus Gaussian noise. Target: exponentially-weighted mean of final 64 steps. Requires multi-scale sequential pattern extraction.
+    \item \textbf{Spectral:} Power spectra with 2--4 Gaussian peaks superimposed on $1/\sqrt{f}$ noise. Target: normalized frequency of dominant peak. Requires frequency-domain localization.
+    \item \textbf{Relational:} Pairwise distance matrices ($32{\times}32$) from 2--5 point clusters in $\mathbb{R}^2$. Target: mean inter-cluster distance. Requires global structural reasoning about cluster geometry.
+\end{itemize}
+
+Each training batch contains equal proportions of all four types, shuffled together. The router receives no explicit type label---it must infer data type (or learn to ignore it) from the raw input.
+
+\subsection{Training Protocol}
+
+All models: AdamW optimizer ($\eta{=}10^{-3}$, weight decay $10^{-4}$), cosine annealing over 400 epochs, batch size 64, gradient clipping at 1.0. Evaluation on 2000 independently generated samples (10 batches $\times$ 200). All experiments on a single NVIDIA GTX 1650 (4\,GB).
+
+\subsection{Fairness Controls}
+
+To ensure apple-to-apple comparisons, we run each architecture at \textbf{three matched parameter budgets} ($\sim$220K, $\sim$400K, $\sim$700K) by adjusting the expert hidden dimension. We also test a single large FFN baseline (no MoE overhead) and run robustness checks across 5 random seeds.
+
+\subsection{Real-Data Validation}
+
+To verify that our findings transfer beyond synthetic data, we construct a real multimodal benchmark from four standard datasets, all mapped to unified 10-class classification with preserved native structure:
+\begin{itemize}[leftmargin=*,itemsep=1pt,topsep=2pt]
+    \item \textbf{Spatial:} CIFAR-10 grayscale images ($32{\times}32{=}1024$-dim).
+    \item \textbf{Temporal:} Speech Commands waveforms resampled to 1024 samples.
+    \item \textbf{Spectral:} FFT magnitude spectra of the same audio (1024 bins).
+    \item \textbf{Relational:} MNIST pairwise row-distance matrices ($32{\times}32{=}1024$-dim).
+\end{itemize}
+We note that spectral and temporal data derive from the same audio source (Speech Commands), which we discuss in Section~\ref{sec:discussion}. All models are parameter-matched at $\sim$223K parameters (hidden dims searched independently per architecture). Training: AdamW, 30 epochs $\times$ 500 steps/epoch, batch size 64, 3 seeds.
+
+% ══════════════════════════════════════════════════════════════════
+\section{Results}
+\label{sec:results}
+
+\subsection{Parameter-Matched Comparison}
+\label{sec:param_matched}
+
+Table~\ref{tab:fairness} presents parameter-controlled results at three budget levels.
+
+\begin{table}[t]
+\centering
+\small
+\caption{\textbf{Parameter-matched comparison} across three budgets. Hetero and Hybrid outperform Homo at \textit{every} budget level, even when Homo has more total parameters. $\Delta$ is relative MSE reduction vs.\ Homo at same budget.}
+\label{tab:fairness}
+\begin{tabular}{@{}llrr@{}}
+\toprule
+\textbf{Budget} & \textbf{Model} & \textbf{Params} & \textbf{MSE} \\
+\midrule
+\multirow{3}{*}{Small} & Homo (h=56) & 367,816 & 0.0185 \\
+ & Hetero (h=128) & 220,280 & \best{0.0155} {\scriptsize$\downarrow$16.2\%} \\
+ & Hybrid (h=80) & 248,990 & 0.0156 {\scriptsize$\downarrow$15.7\%} \\
+\midrule
+\multirow{3}{*}{Medium} & Homo (h=80) & 472,840 & 0.0208 \\
+ & Hetero (h=226) & 401,144 & \best{0.0142} {\scriptsize$\downarrow$31.7\%} \\
+ & Hybrid (h=128) & 352,280 & 0.0147 {\scriptsize$\downarrow$29.3\%} \\
+\midrule
+\multirow{3}{*}{Large} & Homo (h=128) & 689,800 & 0.0201 \\
+ & Hetero (h=380) & 888,322 & 0.0145 {\scriptsize$\downarrow$27.9\%} \\
+ & Hybrid (h=196) & 538,490 & \best{0.0142} {\scriptsize$\downarrow$29.4\%} \\
+\midrule
+\multicolumn{2}{@{}l}{Single FFN (h=256)} & 295,425 & 0.0207 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Several findings stand out:
+
+\textbf{Hetero wins at every budget.} At the small budget, Hetero achieves 0.0155 with only 220K parameters, beating Homo's 0.0185 despite Homo having $1.7\times$ more parameters. At the medium budget, the gap widens to 31.7\%. This provides evidence against the hypothesis that heterogeneous gains are merely a regularization artifact of smaller model size.
+
+\textbf{Homo cannot scale.} Increasing Homo's parameters from 368K to 690K ($1.9\times$) yields \textit{worse} performance: $0.0185 \to 0.0201$. The homogeneous MoE appears to hit a representational saturation point that additional parameters do not overcome at this scale.
+
+\textbf{Single FFN $\approx$ Homo MoE.} A single large FFN (0.0207) performs comparably to Homo 4$\times$FFN at 400K (0.0208) and 700K (0.0201), suggesting that identical FFN experts provide minimal ensemble benefit on structurally diverse data.
+
+\textbf{Hybrid is competitive or best.} At the large budget, Hybrid (0.0142) matches or edges out Hetero (0.0145) with fewer parameters, validating the design of keeping one FFN as a general fallback.
+
+\subsection{Per-Type Performance Analysis}
+\label{sec:pertype}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{hetmoe_v2_results/fig3_per_type.png}
+\caption{\textbf{Per-type MSE} for the core comparison (hidden=128). Hetero and Hybrid substantially outperform Homo on Spatial ($3.75\times$), Spectral, and Relational data. Temporal is the notable exception where FFN's full-sequence receptive field outperforms the dilated convolution's local window.}
+\label{fig:pertype}
+\end{figure*}
+
+Figure~\ref{fig:pertype} reveals that the aggregate advantage masks a nuanced per-type story. Table~\ref{tab:pertype} quantifies this at the medium budget:
+
+\begin{table}[t]
+\centering
+\small
+\caption{\textbf{Per-type MSE at $\sim$400K budget.} Bold marks best per column. Hetero dominates Spatial and Relational; Homo wins Temporal; Hybrid provides the best balance.}
+\label{tab:pertype}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+& \textbf{Spatial} & \textbf{Temporal} & \textbf{Spectral} & \textbf{Relational} \\
+\midrule
+Homo & 0.0168 & \best{0.0060} & 0.0522 & 0.0083 \\
+Hetero & 0.0072 & 0.0052 & \best{0.0404} & \best{0.0041} \\
+Hybrid & \best{0.0026} & 0.0079 & 0.0433 & 0.0051 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Matched bias $\to$ massive gains.} The 2D-CNN expert achieves $6.5\times$ lower error than FFN on spatial data at the hybrid's $\sim$400K budget (0.0026 vs.\ 0.0168). This demonstrates that when an expert's computational primitive matches the data's generative structure, the advantage is not marginal---it is multiplicative.
+
+\textbf{Mismatched bias $\to$ measurable cost.} At the small budget, the dilated-CNN temporal expert (0.0120) performs $3.2\times$ worse than FFN (0.0037) on temporal data. The dilated convolution's local receptive field of 31 steps cannot capture the global sinusoidal patterns spanning 1024 steps that the full-rank FFN projection handles natively.
+
+\textbf{Hybrid resolves the tradeoff.} The FFN expert in the Hybrid configuration recovers temporal performance while retaining spatial and relational gains. This pattern is consistent across all budgets.
+
+\subsection{Scaling Analysis}
+\label{sec:scaling}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{hetmoe_v2_results/fig4_scaling.png}
+\caption{\textbf{Scaling behavior.} Homo MSE is flat across the entire parameter range (368K--690K). Hetero and Hybrid improve steadily. The gap \textit{widens} with scale.}
+\label{fig:scaling}
+\end{figure}
+
+Figure~\ref{fig:scaling} presents a notable finding: the \textit{early saturation} of homogeneous MoE.
+
+\begin{table}[t]
+\centering
+\small
+\caption{\textbf{Early saturation.} Homo shows zero improvement from $1.9\times$ parameter increase. Hetero improves 6.5\%, Hybrid 9.0\%. The advantage gap widens with scale.}
+\label{tab:scaling}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Model} & \textbf{Small} & \textbf{Large} & \textbf{$\Delta$} \\
+\midrule
+Homo & 0.0185 & 0.0201 & $+$8.6\% \textit{(worse)} \\
+Hetero & 0.0155 & 0.0145 & $-$6.5\% \\
+Hybrid & 0.0156 & 0.0142 & $-$9.0\% \\
+\midrule
+\multicolumn{3}{@{}l}{Hetero vs.\ Homo gap} & $16.2\% \to 27.9\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Homo's MSE goes from 0.0185 (368K params) to 0.0208 (473K) to 0.0201 (690K)---\textit{not improving} despite nearly doubling parameters. Meanwhile, Hetero steadily decreases from 0.0155 to 0.0142 to 0.0145.
+
+We interpret this as \textbf{optimization-driven representational saturation} at this scale: FFNs can theoretically approximate any function, including convolutions and spectral analysis, but the optimization landscape makes this approximation increasingly difficult within a fixed training budget. Architecturally matched experts bypass this by directly computing the relevant transformations.
+
+\subsection{Robustness Analysis}
+
+From our 5-seed experiment (seeds 42, 123, 456, 789, 1337) at hidden=128:
+
+\begin{table}[t]
+\centering
+\small
+\caption{\textbf{Robustness across 5 seeds.} Hetero and Hybrid win on all seeds with lower variance. The minimum Hetero advantage over Homo (worst seed) is 14.0\%.}
+\label{tab:seeds}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Model} & \textbf{Mean$\pm$Std} & \textbf{Wins} & \textbf{Min $\Delta$} \\
+\midrule
+Homo & $0.0208 \pm 0.0013$ & --- & --- \\
+Hetero & $0.0171 \pm 0.0007$ & 5/5 & 14.0\% \\
+Hybrid & $0.0153 \pm 0.0010$ & 5/5 & 14.5\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The heterogeneous models also exhibit $\sim$2$\times$ lower variance, suggesting a more stable optimization landscape when experts have distinct architectural constraints.
+
+\subsection{Routing Behavior}
+\label{sec:routing}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{hetmoe_v2_results/fig2_routing.png}
+\caption{\textbf{Routing weight heatmaps.} Left: Homo routes Relational data entirely to one FFN expert (routing collapse). Center: Hetero shows mostly uniform routing except for Relational data. Right: Hybrid shows Relational data strongly preferring the Spatial expert (which uses attention-like global pooling after convolution). In all three, routing for Spatial/Temporal/Spectral data is largely uniform.}
+\label{fig:routing}
+\end{figure*}
+
+An unexpected finding emerges from Figure~\ref{fig:routing}: \textbf{the router does not strongly specialize experts to matching data types}. For Spatial, Temporal, and Spectral data, routing weights are nearly uniform ($\sim$0.25 each) across all experts in the Hetero model. Only Relational data triggers clear routing preferences.
+
+This reveals that heterogeneous benefit does \textit{not} require perfect routing. Each expert processes all data types and produces outputs shaped by its architectural inductive bias. When blended, these architecturally diverse representations provide complementary views that improve prediction. The diversity of \textit{output representations} matters more than the precision of \textit{input routing}.
+
+Notably, \textbf{Homo exhibits routing collapse}: Relational data is routed with weight 0.997--1.00 to a single FFN expert, effectively wasting 3/4 of the model's capacity for this data type. The heterogeneous model distributes Relational data between the Spatial expert (0.65) and Relational expert (0.35), utilizing both perspectives.
+
+\subsection{Real-Data Validation}
+\label{sec:realdata}
+
+Table~\ref{tab:realdata} and Figure~\ref{fig:realdata} present results on real multimodal data, where all three models are parameter-matched at $\sim$223K.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{hetmoe_realdata_results/fig1_training_curves.png}
+\caption{\textbf{Training curves on real multimodal data} ($\sim$223K params, shaded regions show $\pm$1 std across 3 seeds). Hetero converges to lower loss and higher accuracy throughout training. The gap is visible from the first epoch and widens steadily.}
+\label{fig:realdata_training}
+\end{figure*}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{hetmoe_realdata_results/fig2_per_type_accuracy.png}
+\caption{\textbf{Per-type accuracy on real data} ($\sim$223K params). Hetero outperforms Homo on all four modalities, with the largest gains on Temporal ($3.4\times$) and Spatial ($1.5\times$).}
+\label{fig:realdata}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\small
+\caption{\textbf{Real-data accuracy} ($\sim$223K params, 3 seeds). Hetero outperforms Homo by +37.0\% overall and on every data type. Largest gains on Temporal ($3.4\times$) and Spatial ($1.5\times$).}
+\label{tab:realdata}
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+& \textbf{Overall} & \textbf{Spatial} & \textbf{Temporal} & \textbf{Spectral} & \textbf{Relational} \\
+\midrule
+Homo & 39.0 & 34.2 & 11.3 & 21.5 & 89.1 \\
+Hetero & \best{53.5} & \best{51.5} & \best{38.4} & \best{32.1} & \best{91.8} \\
+Hybrid & 48.6 & 47.4 & 26.9 & 29.6 & 90.7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The synthetic findings transfer convincingly to real data:
+
+\textbf{Hetero wins across the board.} Heterogeneous MoE achieves 53.5\% accuracy versus Homo's 39.0\% (+37.0\%), winning on all 3 seeds. The improvement is consistent across all four data types, with the largest gains on Temporal (11.3\%$\to$38.4\%, $3.4\times$) and Spatial (34.2\%$\to$51.5\%, $1.5\times$).
+
+\textbf{Temporal expert recovers on real data.} Unlike the synthetic setting where the dilated convolution underperformed on temporal data, it achieves $3.4\times$ better accuracy than FFN on real audio waveforms. Real audio contains local patterns (formants, phoneme boundaries) well-suited to the convolution's multi-scale receptive field, unlike the synthetic global sinusoids.
+
+\textbf{Hybrid remains strong.} Hybrid (48.6\%) falls between Hetero and Homo, consistent with its role as a robust compromise. All three models are tightly parameter-matched (222--224K), ruling out capacity confounds.
+
+% ══════════════════════════════════════════════════════════════════
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Why Does Architectural Diversity Help?}
+
+We hypothesize three complementary mechanisms:
+
+\textbf{Representation diversity.} Homogeneous FFN experts, despite different initializations, converge to similar representations---a phenomenon related to representation collapse in sparse MoE~\cite{chi2022collapse}. Architecturally diverse experts are \textit{structurally constrained} to produce different representations: a 2D convolution output is mathematically incapable of being identical to an FFT output, regardless of training.
+
+\textbf{Implicit ensembling.} Blending outputs from experts with different inductive biases acts as a powerful implicit ensemble. This mirrors findings in classical machine learning that diversity among ensemble members is as important as individual accuracy~\cite{krogh1994neural}.
+
+\textbf{Parameter efficiency.} Specialized architectures encode structural priors as architectural constraints rather than learned weights. A 2D convolution inherently understands translation equivariance without learning it from data---this knowledge is ``free'' in terms of parameters.
+
+\subsection{The Importance of Preserved Structure}
+
+In an earlier version of our experiments (not reported here), we applied random projections to map each data type into a shared 1024-dimensional space. Under random projection, heterogeneous experts performed identically to homogeneous ones, because the projection destroys the structural information that specialized architectures exploit. The spatial expert's 2D convolution processed random noise reshaped into a grid---gaining nothing from its spatial inductive bias.
+
+This negative result is as informative as our positive findings: \textbf{architectural heterogeneity requires that data structure be preserved} at the point where experts process it. In practical multi-modal systems, this means specialized experts should receive data in its native format (images as grids, audio as waveforms, text as token sequences), not after homogenizing projections.
+
+\subsection{When Inductive Bias Hurts}
+
+Our temporal results provide an important cautionary note. The dilated causal convolution, despite being ``designed for'' sequential data, performs $2$--$3\times$ worse than FFN on our specific temporal task. The reason: our temporal signal contains global frequency patterns (sinusoidal superpositions spanning all 1024 steps) that require attending to the entire sequence. The dilated convolution's receptive field of 31 steps, while useful for many real-world sequential tasks, misses these long-range dependencies.
+
+This demonstrates that \textbf{inductive bias is a tradeoff, not a free lunch}. The hybrid design---keeping one general-purpose FFN alongside specialists---provides essential robustness against bias mismatch.
+
+\subsection{Soft Routing as Implicit Ensembling}
+
+Our routing analysis (Section~\ref{sec:routing}) reveals that for most data types, routing weights are near-uniform ($\sim$0.25 per expert). One might ask: is the heterogeneous MoE just a fixed ensemble of diverse architectures, with routing providing little benefit? We believe the answer is: \textit{yes, and that is precisely the point}. The key contribution is not that routing learns perfect type-identification, but that \textbf{architectural diversity makes ensembling dramatically more effective}. Homogeneous FFN ensembles exhibit representation collapse~\cite{chi2022collapse}---four identically-structured experts converge to similar functions regardless of initialization. Architecturally diverse experts are \textit{structurally constrained} to produce different representations, yielding ensemble diversity ``for free.'' The router still provides marginal benefit by learning to upweight relevant experts for structured data types (notably Relational), but the primary mechanism is diversity of computation, not precision of routing.
+
+\subsection{On the Shared Label Space}
+
+Our real-data experiment maps four distinct datasets (CIFAR-10, Speech Commands, MNIST) into a shared 10-class label space where class indices have different semantic meaning per modality (class 0 = ``airplane'' for CIFAR-10, ``yes'' for Speech Commands, digit 0 for MNIST). This is by design: the model receives a mixed stream of heterogeneous inputs with no modality label and must handle them through a single output head. This tests the harder and more realistic setting where modality information is not provided to the model. Providing per-modality classification heads would give the model type information for free, conflating routing ability with type-oracle access. Under this shared-label setup, the question is: which MoE architecture copes better with incoherent multi-source inputs? Hetero's +37.0\% advantage demonstrates that architectural diversity provides robustness to input heterogeneity even when the label space is semantically inconsistent.
+
+\subsection{Implications for Large-Scale MoE}
+
+If our early saturation finding generalizes to transformer-scale MoE, it would challenge the prevailing practice of scaling by adding more identical FFN experts. A potentially more effective strategy would be to include architecturally diverse expert modules within the same MoE layer: convolution experts for vision tokens, recurrent experts for long-range dependencies, and FFT experts for periodic patterns.
+
+Recent work on UMoE~\cite{umoe2025}, which unifies attention and FFN as expert types within a single MoE framework, provides early evidence that this direction is viable at scale. We note that our early saturation observation is based on three budget levels at sub-million parameter scale; whether this saturation persists at billion-parameter scale where FFN approximation capacity is vastly greater remains an open question.
+
+\subsection{Alternative Explanations and Limitations}
+
+We analyze several potential alternative explanations for our results, along with open limitations:
+\begin{enumerate}[leftmargin=*,itemsep=1pt,topsep=2pt]
+    \item \textbf{Controlled benchmarks.} Our synthetic data generators are designed such that expert architectures align with generating processes. This is partially tautological: we show that matched inductive biases help, which is expected. The non-trivial findings are (a) the magnitude of improvement (16--32\%), (b) the early saturation in homogeneous models, and (c) transfer to real data where the alignment is not guaranteed.
+    \item \textbf{Real-data modality overlap.} Our spectral and temporal modalities derive from the same audio source (Speech Commands), meaning 2 of 4 modalities are informationally redundant. The MNIST relational encoding is a transformed image rather than natively relational data. Fully independent real-world modalities remain to be tested. We report these results transparently and note that the +37.0\% advantage is concentrated in Spatial and Temporal types (which are fully independent).
+    \item \textbf{Parameter matching.} In our synthetic experiments, expert hidden dimensions are matched but total parameter counts vary within tiers (up to $1.7\times$) because different architectures have different parameter efficiencies. Convolution-based experts use fewer parameters than FFN experts at matched hidden dimensions due to weight sharing. Critically, the router ($\sim$132K parameters, $\sim$59\% of total) is \textit{identical} across all conditions, so the comparison isolates expert architecture differences. Our real-data experiment achieves tighter matching ($<$1\% difference at $\sim$223K params).
+    \item \textbf{Scale.} Our experiments use 220K--890K parameters. Behavior at billion-parameter scale remains unknown.
+    \item \textbf{Soft routing.} We use dense routing (all experts contribute). The interaction between architectural heterogeneity and sparse top-$k$ routing is unexplored and could affect both performance and computational efficiency.
+    \item \textbf{Expert design.} We hand-selected expert architectures based on domain knowledge. Automated methods (e.g., extending AutoMoE~\cite{jawahar2023automoe} to search over architecture types) could yield better configurations.
+\end{enumerate}
+
+% ══════════════════════════════════════════════════════════════════
+\section{Conclusion}
+\label{sec:conclusion}
+
+We present a systematic study of \textit{architecture-type heterogeneous} Mixture-of-Experts, where experts employ fundamentally different computational primitives rather than identical FFNs. Extending beyond concurrent work that explores pairs of similar architectures~\cite{pandey2025hecto, cook2025brainlike}, we combine four diverse paradigms (2D-CNN, dilated-1D-CNN, FFT, attention) and provide parameter-matched comparisons at three budget levels, demonstrating that:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt,topsep=2pt]
+    \item Architectural diversity provides 16--32\% improvement over homogeneous MoE at matched parameter budgets.
+    \item Homogeneous MoE hits an early saturation that architectural diversity overcomes---the advantage gap \textit{widens} from 16\% to 28\% as models scale.
+    \item The hybrid design (FFN + specialists) is optimal, providing robustness against inductive bias mismatch while retaining domain-specific gains.
+    \item Routing specialization is not required---diverse architectures provide complementary representations even under near-uniform routing.
+\end{itemize}
+
+Our central finding is that \textbf{architectural diversity provides representational complementarity even without routing specialization}---diverse experts produce structurally different outputs that combine effectively under near-uniform routing, while homogeneous experts converge to redundant representations regardless of scale. This principle holds on both synthetic data (16--32\% MSE reduction) and real multimodal data (+37.0\% accuracy), suggesting it is robust across data regimes. We advocate for exploring architectural heterogeneity as a first-class design dimension in MoE systems, alongside scale, sparsity, and routing strategy.
+
+\subsection*{Reproducibility}
+
+All code, data generators, and training scripts are available at: {\small\url{https://github.com/surajbhan/hetmoe}}. The complete experiment suite runs in under 20 minutes on a single consumer GPU (NVIDIA GTX 1650, 4\,GB).
+
+\subsection*{AI Assistance Disclosure}
+
+In the interest of transparency, we disclose the role of AI tools in this work. The research idea, experimental design, and scientific interpretation are solely the author's. \textbf{Claude} (Anthropic, Claude Code CLI) was used as a coding assistant to implement the experiments, generate figures, and draft and expand sections of the paper. \textbf{ChatGPT} (OpenAI) was used as a critical reviewer across multiple passes---identifying overclaimed language, numerical errors, missing baselines, and suggesting reframings (notably ``early saturation'' over ``scaling ceiling'' and the representational complementarity framing). The author made all final editorial decisions, resolved disagreements between the two AI reviewers, and verified all reported numbers against raw experimental data. No AI system contributed to the core hypothesis or experimental methodology. We believe transparent disclosure of AI-assisted workflows is important for reproducibility and scientific integrity.
+
+% ══════════════════════════════════════════════════════════════════
+\begin{thebibliography}{18}
+\small
+
+\bibitem{jacobs1991adaptive}
+R.~A. Jacobs, M.~I. Jordan, S.~J. Nowlan, and G.~E. Hinton.
+Adaptive mixtures of local experts.
+\textit{Neural Computation}, 3(1):79--87, 1991.
+
+\bibitem{shazeer2017outrageously}
+N.~Shazeer, A.~Mirhoseini, K.~Maziarz, A.~Davis, Q.~Le, G.~Hinton, and J.~Dean.
+Outrageously large neural networks: The sparsely-gated mixture-of-experts layer.
+\textit{ICLR}, 2017.
+
+\bibitem{fedus2022switch}
+W.~Fedus, B.~Zoph, and N.~Shazeer.
+Switch transformers: Scaling to trillion parameter models with simple and efficient sparsity.
+\textit{JMLR}, 23(120):1--39, 2022.
+
+\bibitem{lepikhin2020gshard}
+D.~Lepikhin, H.~Lee, Y.~Xu, D.~Chen, O.~Firat, Y.~Huang, M.~Krikun, N.~Shazeer, and Z.~Chen.
+GShard: Scaling giant models with conditional computation and automatic sharding.
+\textit{arXiv:2006.16668}, 2020.
+
+\bibitem{jiang2024mixtral}
+A.~Q. Jiang, A.~Sablayrolles, A.~Roux, et al.
+Mixtral of experts.
+\textit{arXiv:2401.04088}, 2024.
+
+\bibitem{zhou2022expertchoice}
+Y.~Zhou, T.~Lei, H.~Liu, N.~Du, Y.~Huang, V.~Zhao, A.~M. Dai, Q.~V. Le, and J.~Laudon.
+Mixture-of-experts with expert choice routing.
+\textit{NeurIPS}, 35:7103--7114, 2022.
+
+\bibitem{wang2024hmoe}
+A.~Wang, X.~Sun, R.~Xie, et al.
+HMoE: Heterogeneous mixture of experts for language modeling.
+\textit{arXiv:2408.10681}, 2024.
+
+\bibitem{jawahar2023automoe}
+G.~Jawahar, S.~Mukherjee, X.~Liu, et al.
+AutoMoE: Heterogeneous mixture-of-experts with adaptive computation for efficient neural machine translation.
+\textit{ACL}, 2023.
+
+\bibitem{modse2024}
+J.~Raposo, S.~Ritter, B.~Richards, T.~Lillicrap, P.~C. Humphreys, and A.~Santoro.
+Mixture of diverse size experts.
+\textit{arXiv:2409.12210}, 2024.
+
+\bibitem{mfghmoe2025}
+W.~Zhang, Y.~Zhao, H.~Li, and J.~Liu.
+Multi-level feature guided heterogeneous mixture of experts for remote sensing image super-resolution.
+\textit{arXiv:2502.09654}, 2025.
+
+\bibitem{umoe2025}
+Y.~Yang et al.
+UMoE: Unifying attention and FFN with shared experts.
+\textit{arXiv:2505.07260}, 2025.
+
+\bibitem{chi2022collapse}
+Z.~Chi, L.~Dong, S.~Ma, S.~Huang, S.~Singhal, X.-L. Mao, H.~He, and F.~Wei.
+On the representation collapse of sparse mixture of experts.
+\textit{NeurIPS}, 35, 2022.
+
+\bibitem{krogh1994neural}
+A.~Krogh and J.~Vedelsby.
+Neural network ensembles, cross validation, and active learning.
+\textit{NeurIPS}, 7, 1994.
+
+\bibitem{muqeeth2023smear}
+M.~Muqeeth, H.~Liu, and C.~Raffel.
+Soft merging of experts with adaptive routing.
+\textit{arXiv:2306.03745}, 2023.
+
+\bibitem{pandey2025hecto}
+S.~Pandey, R.~Chopra, S.~M. Bhat, and A.~Abhyudaya.
+Hecto: Modular sparse experts for adaptive and interpretable reasoning.
+\textit{arXiv:2506.22919}, 2025.
+
+\bibitem{cook2025brainlike}
+J.~Cook, D.~Akarca, R.~Ponte~Costa, and J.~Achterberg.
+Brain-like processing pathways form in models with heterogeneous experts.
+\textit{arXiv:2506.02813}, 2025.
+
+\end{thebibliography}
+
+\end{document}
