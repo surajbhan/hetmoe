@@ -26,6 +26,18 @@ Parameter-matched comparison at three budget levels (368K, 530K, 690K params):
 - Heterogeneous MoE **improves steadily** across the same range (0.0155 &rarr; 0.0142)
 - Results robust across 5 random seeds (p < 0.01)
 
+#### Training Loss & Per-Expert Breakdown
+![Training Loss and Per-Type Breakdown](hetmoe_v2_results/fig1_training.png)
+
+#### Routing Weights Across Architectures
+![Routing Weight Heatmaps](hetmoe_v2_results/fig2_routing.png)
+
+#### Per-Type Performance (MSE)
+![Per-Type Performance](hetmoe_v2_results/fig3_per_type.png)
+
+#### Scaling Behavior
+![MSE vs Parameters and Expert Size](hetmoe_v2_results/fig4_scaling.png)
+
 ### Real-Data Experiments (CIFAR-10, Speech Commands, MNIST)
 
 At matched parameter budgets (~223K params):
@@ -37,6 +49,21 @@ At matched parameter budgets (~223K params):
 | Hybrid (1 FFN + 3 specialized) | 48.6% | 223,980 |
 
 **+37.0% improvement** from heterogeneous over homogeneous at matched parameters.
+
+#### Training Curves (Real Data)
+![Training Loss and Accuracy](hetmoe_realdata_results/fig1_training_curves.png)
+
+#### Per-Type Accuracy
+![Per-Type Accuracy on Real Multimodal Data](hetmoe_realdata_results/fig2_per_type_accuracy.png)
+
+#### Overall Accuracy Comparison
+![Overall Accuracy](hetmoe_realdata_results/fig3_overall_accuracy.png)
+
+#### Seed Robustness
+![Per-Seed Robustness](hetmoe_realdata_results/fig4_seed_robustness.png)
+
+#### Per-Type Accuracy Profile (Radar)
+![Radar Profile](hetmoe_realdata_results/fig5_radar_profile.png)
 
 ## Repository Structure
 
