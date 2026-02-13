@@ -566,6 +566,20 @@ def main():
     print(f"  Hetero h=128: {build_hetero(128).param_count():,} params")
     print(f"  Hybrid h={best_hybrid_hid}: {build_hybrid(best_hybrid_hid).param_count():,} params")
 
+    out_dir = "hetmoe_realdata_results"
+
+    # ── Save normalization stats for inference ──
+    norm_stats = {
+        "cifar": {"mean": cifar_Xtr[:min_train].mean().item(), "std": cifar_Xtr[:min_train].std().item()},
+        "speech": {"mean": speech_Xtr[:min_train].mean().item(), "std": speech_Xtr[:min_train].std().item()},
+        "spectral": {"mean": spec_Xtr[:min_train].mean().item(), "std": spec_Xtr[:min_train].std().item()},
+        "mnist": {"mean": mnist_Xtr[:min_train].mean().item(), "std": mnist_Xtr[:min_train].std().item()},
+    }
+    os.makedirs(out_dir, exist_ok=True)
+    with open(os.path.join(out_dir, "norm_stats.json"), "w") as f:
+        json.dump(norm_stats, f, indent=2)
+    print(f"  Saved normalization stats to {out_dir}/norm_stats.json")
+
     # ── Run experiments ──
     all_results = {}
 
@@ -589,6 +603,18 @@ def main():
             eval_result = evaluate_model(model, test_ds, label=f"{name} s={seed}")
             eval_result["history"] = history
             seed_results[name] = eval_result
+
+            # Save model weights (first seed only — for demo/inference)
+            if seed_idx == 0:
+                model_path = os.path.join(out_dir, f"{name}_model.pt")
+                torch.save({
+                    "state_dict": model.cpu().state_dict(),
+                    "hidden_dim": hid,
+                    "expert_names": model.names,
+                    "params": model.param_count(),
+                }, model_path)
+                print(f"    Saved {model_path}")
+
             del model
             torch.cuda.empty_cache() if DEVICE.type == "cuda" else None
 
@@ -624,8 +650,6 @@ def main():
     print(f"  Hybrid wins: {sum(h > o for h, o in zip(hybrid_accs, homo_accs))}/{NUM_SEEDS}")
 
     # ── Save ──
-    out_dir = "hetmoe_realdata_results"
-    os.makedirs(out_dir, exist_ok=True)
     with open(os.path.join(out_dir, "results.json"), "w") as f:
         json.dump(all_results, f, indent=2, default=str)
 
