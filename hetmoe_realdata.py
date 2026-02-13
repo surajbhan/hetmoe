@@ -476,6 +476,74 @@ def evaluate_model(model, test_ds, label=""):
 
 
 # ════════════════════════════════════════════════════════════
+#  SAVE DEMO EXAMPLES
+# ════════════════════════════════════════════════════════════
+
+CIFAR10_LABELS = ["airplane", "automobile", "bird", "cat", "deer",
+                  "dog", "frog", "horse", "ship", "truck"]
+SPEECH_LABELS = ["yes", "no", "up", "down", "left",
+                 "right", "on", "off", "stop", "go"]
+
+
+def save_demo_examples(out_dir, data_dir="./data_cache"):
+    """Save example inputs from raw datasets for the Gradio demo."""
+    from PIL import Image
+    import torchvision
+    import torchvision.transforms as T
+    import scipy.io.wavfile as wavfile
+    import torchaudio
+
+    examples_dir = os.path.join(out_dir, "examples")
+    os.makedirs(examples_dir, exist_ok=True)
+
+    # ── CIFAR-10 images (3 distinct classes, raw color → saved as-is) ──
+    cifar_test = torchvision.datasets.CIFAR10(root=data_dir, train=False, download=False)
+    saved = set()
+    for img_pil, cls in cifar_test:
+        if cls in saved:
+            continue
+        # Save the raw PIL image (Gradio will handle it)
+        img_pil.save(os.path.join(examples_dir, f"cifar_{CIFAR10_LABELS[cls]}.png"))
+        saved.add(cls)
+        if len(saved) >= 3:
+            break
+
+    # ── Speech Commands audio (3 distinct commands) ──
+    speech_test = torchaudio.datasets.SPEECHCOMMANDS(root=data_dir, download=False, subset="testing")
+    saved = set()
+    for item in speech_test:
+        waveform, sr, label = item[0], item[1], item[2]
+        if label not in SPEECH_LABELS:
+            continue
+        cls = SPEECH_LABELS.index(label)
+        if cls in saved:
+            continue
+        wav = waveform.squeeze(0).numpy()
+        wav_int16 = (wav / (np.abs(wav).max() + 1e-8) * 32767).astype(np.int16)
+        path = os.path.join(examples_dir, f"speech_{label}.wav")
+        wavfile.write(path, sr, wav_int16)
+        saved.add(cls)
+        if len(saved) >= 3:
+            break
+
+    # ── MNIST digits (3 distinct digits, raw images) ──
+    mnist_test = torchvision.datasets.MNIST(root=data_dir, train=False, download=False,
+                                            transform=T.Compose([T.Resize(32), T.ToTensor()]))
+    saved = set()
+    for img_tensor, cls in mnist_test:
+        if cls in saved:
+            continue
+        arr = (img_tensor.squeeze(0).numpy() * 255).astype(np.uint8)
+        img = Image.fromarray(arr, mode='L')
+        img.save(os.path.join(examples_dir, f"mnist_{cls}.png"))
+        saved.add(cls)
+        if len(saved) >= 3:
+            break
+
+    print(f"  Saved demo examples to {examples_dir}/")
+
+
+# ════════════════════════════════════════════════════════════
 #  MAIN EXPERIMENT
 # ════════════════════════════════════════════════════════════
 
@@ -507,6 +575,9 @@ def main():
 
     # 4. MNIST → relational (pairwise distance matrices)
     mnist_Xtr, mnist_ytr, mnist_Xte, mnist_yte = load_mnist_relational()
+
+    # ── Save example inputs for Gradio demo ──
+    save_demo_examples(out_dir)
 
     # Balance dataset sizes (use min across modalities)
     min_train = min(len(cifar_Xtr), len(speech_Xtr), len(spec_Xtr), len(mnist_Xtr))

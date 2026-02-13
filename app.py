@@ -402,18 +402,34 @@ def classify_audio(audio):
 
 
 def classify_digit(img):
-    """Classify a drawn digit as an MNIST relational input."""
-    if img is None:
-        return None, None, "Please draw a digit."
-    # Sketchpad returns a dict with 'composite' key
-    if isinstance(img, dict):
-        img = img.get("composite", img.get("image", None))
-    if img is None:
-        return None, None, "Please draw a digit."
+    """Classify a digit image as an MNIST relational input."""
     x = preprocess_digit(img)
     if x is None:
-        return None, None, "Could not process drawing."
+        return None, None, "Please upload or draw a digit."
     return predict(x, "Relational (MNIST style)", MNIST_LABELS)
+
+
+# ════════════════════════════════════════════════════════════
+#  Discover example files
+# ════════════════════════════════════════════════════════════
+
+def find_examples():
+    """Find saved example files for each modality."""
+    examples_dir = os.path.join(RESULTS_DIR, "examples")
+    result = {"image": [], "audio": [], "digit": []}
+    if not os.path.isdir(examples_dir):
+        return result
+    for f in sorted(os.listdir(examples_dir)):
+        path = os.path.join(examples_dir, f)
+        if f.startswith("cifar_") and f.endswith(".png"):
+            result["image"].append(path)
+        elif f.startswith("speech_") and f.endswith(".wav"):
+            result["audio"].append(path)
+        elif f.startswith("mnist_") and f.endswith(".png"):
+            result["digit"].append(path)
+    return result
+
+EXAMPLES = find_examples()
 
 
 # ════════════════════════════════════════════════════════════
@@ -456,6 +472,12 @@ Upload an image, record audio, or draw a digit to see how the router distributes
                     with gr.Column(scale=1):
                         img_input = gr.Image(type="pil", label="Upload Image")
                         img_btn = gr.Button("Classify", variant="primary")
+                        if EXAMPLES["image"]:
+                            gr.Examples(
+                                examples=EXAMPLES["image"],
+                                inputs=img_input,
+                                label="Try these CIFAR-10 samples",
+                            )
                     with gr.Column(scale=1):
                         img_pred = gr.Label(num_top_classes=5, label="Predictions (CIFAR-10)")
                         img_chart = gr.Image(label="Expert Routing")
@@ -471,6 +493,12 @@ Upload an image, record audio, or draw a digit to see how the router distributes
                     with gr.Column(scale=1):
                         audio_input = gr.Audio(label="Record or Upload Audio")
                         audio_btn = gr.Button("Classify", variant="primary")
+                        if EXAMPLES["audio"]:
+                            gr.Examples(
+                                examples=EXAMPLES["audio"],
+                                inputs=audio_input,
+                                label="Try these Speech Commands samples",
+                            )
                     with gr.Column(scale=1):
                         gr.Markdown("### Temporal (Waveform)")
                         audio_pred_t = gr.Label(num_top_classes=5, label="Temporal Predictions")
@@ -488,11 +516,17 @@ Upload an image, record audio, or draw a digit to see how the router distributes
 
             # ── Tab 3: Digit (Relational) ──
             with gr.Tab("Digit (Relational)"):
-                gr.Markdown("Draw a digit (0-9). It's converted to a pairwise distance matrix and classified using MNIST labels.")
+                gr.Markdown("Draw a digit or upload an image. It's converted to a pairwise distance matrix and classified using MNIST labels.")
                 with gr.Row():
                     with gr.Column(scale=1):
-                        digit_input = gr.Sketchpad(label="Draw a Digit", type="pil")
+                        digit_input = gr.Image(type="pil", label="Upload or Draw a Digit")
                         digit_btn = gr.Button("Classify", variant="primary")
+                        if EXAMPLES["digit"]:
+                            gr.Examples(
+                                examples=EXAMPLES["digit"],
+                                inputs=digit_input,
+                                label="Try these MNIST samples",
+                            )
                     with gr.Column(scale=1):
                         digit_pred = gr.Label(num_top_classes=5, label="Predictions (MNIST)")
                         digit_chart = gr.Image(label="Expert Routing")
