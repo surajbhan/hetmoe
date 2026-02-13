@@ -102,10 +102,10 @@ Experiments were run on an NVIDIA GeForce GTX 1650 (4 GB VRAM). The synthetic ex
 If you use this work, please cite:
 
 ```bibtex
-@article{satpathy2025hetmoe,
+@article{satpathy2026hetmoe,
   title={Architectural Heterogeneity in Mixture-of-Experts: Representational Complementarity Without Routing Specialization},
   author={Satpathy, Surajbhan},
-  year={2025}
+  year={2026}
 }
 ```
 
