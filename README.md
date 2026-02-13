@@ -65,18 +65,33 @@ At matched parameter budgets (~223K params):
 #### Per-Type Accuracy Profile (Radar)
 ![Radar Profile](hetmoe_realdata_results/fig5_radar_profile.png)
 
+## Interactive Demo
+
+Try the model yourself — upload an image, record audio, or draw a digit and watch the router distribute weight across architecturally diverse experts in real time.
+
+![HetMoE Gradio Demo](demo_screenshot.png)
+
+*The Spatial (2D-CNN) expert receives 74.3% of routing weight for an airplane image — without any explicit modality label.*
+
+```bash
+python app.py  # Launch locally at http://localhost:7860
+```
+
+Also available on [HuggingFace Spaces](https://huggingface.co/spaces/surajbhan/hetmoe).
+
 ## Repository Structure
 
 ```
 hetmoe_v2.py                  # Synthetic experiments (structured regression)
 hetmoe_realdata.py            # Real-data experiments (CIFAR-10, Speech Commands, MNIST)
 hetmoe_fairness_audit.py      # Fairness audit across expert types
+app.py                        # Gradio interactive demo
+deploy_hf.sh                  # Deploy to HuggingFace Spaces
 hetmoe_paper.tex              # Research paper (LaTeX source)
 hetmoe_paper.pdf              # Compiled paper
 hetmoe_v2_results/            # Synthetic experiment results and figures
-hetmoe_realdata_results/      # Real-data results, training curves, and figures
+hetmoe_realdata_results/      # Real-data results, training curves, figures, and model weights
 hetmoe_audit/                 # Fairness audit results
-logs.logs                     # Training logs
 ```
 
 ## Requirements
@@ -111,6 +126,24 @@ python hetmoe_realdata.py
 Downloads CIFAR-10, Speech Commands, and MNIST, then trains homogeneous, heterogeneous, and hybrid MoE models across 3 seeds. Generates training curves and comparison figures in `hetmoe_realdata_results/`.
 
 Datasets are cached in `data_cache/` (auto-downloaded on first run).
+
+### Interactive Demo (Local)
+
+```bash
+pip install gradio scipy
+python app.py
+```
+
+Opens at `http://localhost:7860`. Requires trained model weights — run `hetmoe_realdata.py` first.
+
+### Deploy to HuggingFace Spaces
+
+```bash
+# One-command deploy (requires huggingface-cli login)
+bash deploy_hf.sh
+```
+
+Or manually: see `deploy_hf.sh` for step-by-step instructions.
 
 ### Fairness Audit
 
